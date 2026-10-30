@@ -108,7 +108,7 @@ async def lifespan(app: FastAPI):
     # Validate required environment variables
     required_vars = [
         "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
-        "OPENAI_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY",
+        "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY",
     ]
     missing = [v for v in required_vars if not os.getenv(v)]
     if missing:
@@ -123,8 +123,8 @@ async def lifespan(app: FastAPI):
     )
 
     _extraction_service = DealExtractionService(
-        api_key=os.getenv("OPENAI_API_KEY", ""),
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        api_key=os.getenv("GEMINI_API_KEY", ""),
+        model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
     )
 
     _audit_service = AuditService()
@@ -232,7 +232,7 @@ class CreateDealBody(BaseModel):
 )
 async def create_deal(body: CreateDealBody):
     """
-    1. Extract structured deal from raw_text via GPT-4o-mini + instructor.
+    1. Extract structured deal from raw_text via Gemini AI.
     2. Create a DRAFT invoice in PayPal Sandbox.
     3. Store the deal in Supabase with status DRAFT_LOCKED.
     4. Return deal_id + paypal_invoice_id.

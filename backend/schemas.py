@@ -62,7 +62,7 @@ class ValidationRule(BaseModel):
 
 class DealCreateRequest(BaseModel):
     """
-    Structured output produced by GPT-4o + instructor from raw deal text.
+    Structured output produced by Gemini AI from raw deal text.
     Also accepted directly by the /api/deals/create endpoint.
     """
     raw_text:         str             = Field(..., description="Original user text or voice transcript")

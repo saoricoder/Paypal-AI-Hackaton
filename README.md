@@ -1,6 +1,6 @@
 # Deal2Pay AI — PayPal AI Hackathon 2026
 
-**Deal2Pay AI** is a full-stack Agentic Commerce application. An autonomous AI agent ingests informal deal text or voice input, extracts structured financial terms using GPT-4o + `instructor`, creates a PayPal Sandbox DRAFT invoice, locks it pending a visual audit, runs OpenCV contour analysis on the uploaded delivery PDF, and — upon 100% compliance — autonomously sends the live invoice. A PayPal webhook listener updates the ledger to `PAID` in real time.
+**Deal2Pay AI** is a full-stack Agentic Commerce application. An autonomous AI agent ingests informal deal text or voice input, extracts structured financial terms using Google Gemini AI (gemini-1.5-flash), creates a PayPal Sandbox DRAFT invoice, locks it pending a visual audit, runs OpenCV contour analysis on the uploaded delivery PDF, and — upon 100% compliance — autonomously sends the live invoice. A PayPal webhook listener updates the ledger to `PAID` in real time.
 
 ---
 
@@ -10,7 +10,7 @@
 |---|---|
 | **Frontend** | Next.js 14+ (App Router), TypeScript, Tailwind CSS, AG Grid, react-pdf, SWR, Lucide React |
 | **Backend** | Python 3.11+, FastAPI, Uvicorn, Pydantic v2 |
-| **LLM** | OpenAI GPT-4o / gpt-4o-mini + `instructor` library |
+| **LLM** | Google Gemini AI (gemini-1.5-flash) with structured JSON output |
 | **Computer Vision** | OpenCV (`cv2`), `pdf2image`, Pillow, numpy |
 | **Database** | Supabase (PostgreSQL) |
 | **Storage** | Supabase Storage (PDF uploads) |
@@ -33,7 +33,7 @@ c:\Proyectos\Paypal AI Hackaton\
 │   └── services/
 │       ├── paypal_service.py               ← PayPal OAuth2, create/send invoice, webhooks
 │       ├── audit_service.py                ← OpenCV + pdf2image checkbox/signature detection
-│       └── deal_extraction_service.py      ← GPT-4o + instructor → DealCreateRequest
+│       └── deal_extraction_service.py      ← Gemini AI → DealCreateRequest
 └── frontend/
     ├── package.json
     ├── next.config.ts
@@ -64,7 +64,7 @@ c:\Proyectos\Paypal AI Hackaton\
 - **Node.js 18+** installed
 - **Supabase account** (free tier is sufficient)
 - **PayPal Developer account** (Sandbox access)
-- **OpenAI API key** (GPT-4o-mini access)
+- **Google Gemini API key** (Get from https://makersuite.google.com/app/apikey)
 - **ngrok** (for local webhook tunneling)
 
 ---
@@ -97,7 +97,7 @@ cp .env.example .env
 # - PAYPAL_CLIENT_ID (from PayPal Developer Dashboard)
 # - PAYPAL_CLIENT_SECRET (from PayPal Developer Dashboard)
 # - PAYPAL_WEBHOOK_ID (create webhook in PayPal, get ID)
-# - OPENAI_API_KEY (from OpenAI Platform)
+# - GEMINI_API_KEY (from Google AI Studio)
 # - SUPABASE_URL (from Supabase Project Settings)
 # - SUPABASE_SERVICE_ROLE_KEY (from Supabase Project Settings)
 # - FRONTEND_ORIGIN=http://localhost:3000
@@ -206,7 +206,7 @@ curl -X POST http://localhost:8000/api/deals/create \
 
 ## Features
 
-- **Natural Language Deal Extraction**: Type or speak deal descriptions, and GPT-4o extracts structured invoice data
+- **Natural Language Deal Extraction**: Type or speak deal descriptions, and Gemini AI extracts structured invoice data
 - **Voice Input**: Browser-native Web Speech API for hands-free deal entry
 - **Document Audit**: OpenCV-powered detection of checkboxes, signatures, and dates in PDF delivery documents
 - **Visual Feedback**: Bounding box overlays on PDFs show detected elements with confidence scores

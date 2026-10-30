@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   AG Grid Dark Theme Overrides
+   ============================================================ */
+
+.ag-theme-alpine-dark {
+  --ag-background-color: #0f0f14;
+  --ag-foreground-color: #e5e5e5;
+  --ag-border-color: #2a2a35;
+  --ag-cell-horizontal-border: #2a2a35;
+  --ag-row-hover-color: #1a1a24;
+  --ag-header-background-color: #14141a;
+  --ag-odd-row-background-color: #0a0a0f;
+  --ag-card-border-color: #2a2a35;
+  --ag-range-selection-background-color: rgba(139, 92, 246, 0.2);
+  --ag-range-selection-border-color: #8b5cf6;
+}
+
+.ag-theme-alpine-dark .ag-header {
+  color: #a1a1aa;
+  font-weight: 600;
+}
+
+.ag-theme-alpine-dark .ag-cell {
+  color: #e5e5e5;
+}
+
+/* ============================================================
+   Custom Animations
+   ============================================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+body {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}

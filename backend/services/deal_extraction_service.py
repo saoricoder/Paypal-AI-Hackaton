@@ -1,16 +1,16 @@
 """
 services/deal_extraction_service.py — Deal2Pay AI
-Uses OpenAI GPT-4o-mini + instructor to extract structured deal data
+Uses Google Gemini AI (gemini-1.5-flash) to extract structured deal data
 from free-form natural language (text or voice transcript).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Optional
 
-import instructor
-import openai
+import google.generativeai as genai
 
 from schemas import DealCreateRequest, LineItem, RuleType, ValidationRule
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 # System prompt that guides the LLM to extract deal terms
-_SYSTEM_PROMPT = """You are a financial terms extraction agent for Deal2Pay AI.
+_SYSTEM_INSTRUCTION = """You are a financial terms extraction agent for Deal2Pay AI.
 
 Your task is to parse informal deal descriptions (spoken or typed) and extract 
 structured invoice data. Always:
@@ -43,15 +43,17 @@ If quantity is implicit (e.g. "a security review"), set quantity to 1.0.
 
 class DealExtractionService:
     """
-    Wraps the OpenAI client with the `instructor` library to guarantee
-    type-safe, Pydantic-validated extraction from natural language.
+    Wraps the Google Gemini AI client to extract structured deal data
+    with type-safe JSON output matching our Pydantic schema.
     """
 
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-1.5-flash") -> None:
         self.model = model
-        raw_client = openai.AsyncOpenAI(api_key=api_key)
-        # Patch the async client with instructor for structured output
-        self.client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON)
+        genai.configure(api_key=api_key)
+        self.client = genai.GenerativeModel(
+            model_name=self.model,
+            system_instruction=_SYSTEM_INSTRUCTION,
+        )
 
     async def extract_deal_from_text(
         self,
@@ -67,40 +69,47 @@ class DealExtractionService:
             DealCreateRequest: Pydantic-validated, ready for PayPal invoice creation.
 
         Raises:
-            instructor.exceptions.InstructorRetryException: If extraction fails after retries.
+            Exception: If extraction fails or JSON parsing fails.
         """
         logger.info("Extracting deal from text (%d chars)...", len(raw_text))
 
-        deal = await self.client.chat.completions.create(
-            model=self.model,
-            response_model=DealCreateRequest,
-            max_retries=3,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Extract the deal terms from the following description:\n\n"
-                        f"---\n{raw_text}\n---\n\n"
-                        f"Return a complete, valid DealCreateRequest JSON object."
-                    ),
-                },
-            ],
-            temperature=0.1,  # Low temperature for deterministic extraction
-        )
+        try:
+            # Configure structured output with JSON schema
+            generation_config = genai.GenerationConfig(
+                response_mime_type="application/json",
+                response_schema=DealCreateRequest.model_json_schema(),
+                temperature=0.1,  # Low temperature for deterministic extraction
+            )
 
-        # Ensure raw_text is preserved (instructor may not include it in the response)
-        deal.raw_text = raw_text
+            response = await self.client.generate_content_async(
+                f"Extract the deal terms from the following description:\n\n---\n{raw_text}\n---\n\nReturn a complete, valid DealCreateRequest JSON object.",
+                generation_config=generation_config,
+            )
 
-        logger.info(
-            "Deal extracted: client=%s, total=$%.2f, items=%d, rules=%d",
-            deal.client_email,
-            deal.total_amount,
-            len(deal.line_items),
-            len(deal.validation_rules),
-        )
+            # Parse the JSON response
+            response_text = response.text
+            response_data = json.loads(response_text)
 
-        return deal
+            # Create DealCreateRequest from parsed data
+            deal = DealCreateRequest(**response_data)
+            deal.raw_text = raw_text  # Preserve original text
+
+            logger.info(
+                "Deal extracted: client=%s, total=$%.2f, items=%d, rules=%d",
+                deal.client_email,
+                deal.total_amount,
+                len(deal.line_items),
+                len(deal.validation_rules),
+            )
+
+            return deal
+
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse Gemini JSON response: %s", e)
+            raise Exception(f"Invalid JSON response from Gemini: {e}") from e
+        except Exception as e:
+            logger.error("Gemini extraction failed: %s", e)
+            raise Exception(f"Failed to extract deal: {e}") from e
 
     async def validate_and_enrich(
         self,
