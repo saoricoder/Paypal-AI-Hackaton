@@ -1,77 +1,126 @@
 # Deal2Pay AI — PayPal AI Hackathon 2026
 
-**Deal2Pay AI** is a full-stack Agentic Commerce application. An autonomous AI agent ingests informal deal text or voice input, extracts structured financial terms using Google Gemini AI (gemini-1.5-flash), creates a PayPal Sandbox DRAFT invoice, locks it pending a visual audit, runs OpenCV contour analysis on the uploaded delivery PDF, and — upon 100% compliance — autonomously sends the live invoice. A PayPal webhook listener updates the ledger to `PAID` in real time.
+**Deal2Pay AI** is an autonomous Agentic Commerce engine that converts voice/chat agreements into PayPal Invoices. The system locks invoices until delivery documents (PDFs) pass an automated Computer Vision audit that verifies signatures and checkboxes. All activity is managed in real time via an interactive AG Grid ledger.
 
----
+## 🎯 Core Features
 
-## Tech Stack
+- **Voice-First Deal Entry**: Browser-native Web Speech API enables hands-free deal input
+- **AI-Powered Extraction**: Google Gemini Flash converts natural language to structured invoice data
+- **Automated Document Audit**: OpenCV detects checkboxes, signatures, and dates in PDFs
+- **Visual Feedback Overlay**: Bounding boxes show detected elements with confidence scores
+- **Real-Time Reasoning Log**: Terminal-style display of agent decision-making
+- **Autonomous Invoice Release**: System sends invoices only after audit approval
+- **Webhook Integration**: PayPal webhooks trigger real-time status updates
+- **Interactive Ledger**: AG Grid provides sortable, filterable deal management
+
+## 🚀 Lifecycle Workflow
+
+1. **Natural Language Input** — Type or speak a deal description
+2. **AI Extraction** — Google Gemini Flash extracts structured data (client, line items, validation rules)
+3. **PayPal DRAFT** — Creates invoice on PayPal Sandbox Invoicing API v2
+4. **Document Audit** — Upload PDF, OpenCV analyzes checkboxes/signatures
+5. **Autonomous Release** — On 100% compliance, send invoice to client
+6. **Payment Settlement** — PayPal webhook updates status to PAID in real-time
+
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Next.js 14+ (App Router), TypeScript, Tailwind CSS, AG Grid, react-pdf, SWR, Lucide React |
+| **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, AG Grid Community, react-pdf, SWR, Lucide React |
 | **Backend** | Python 3.11+, FastAPI, Uvicorn, Pydantic v2 |
 | **LLM** | Google Gemini AI (gemini-1.5-flash) with structured JSON output |
 | **Computer Vision** | OpenCV (`cv2`), `pdf2image`, Pillow, numpy |
 | **Database** | Supabase (PostgreSQL) |
 | **Storage** | Supabase Storage (PDF uploads) |
 | **Payment API** | PayPal Sandbox Invoicing API v2 + Webhooks |
-| **Webhook Tunnel** | `ngrok` (for local development) |
+| **Deployment** | Render (Web Services for backend & frontend) |
 
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-c:\Proyectos\Paypal AI Hackaton\
+C:\Proyectos\Paypal AI Hackaton\
 ├── database/
-│   └── schema.sql                          ← Run once in Supabase SQL editor
+│   └── schema.sql                          ← Supabase database schema
 ├── backend/
-│   ├── main.py                             ← FastAPI app + all routes
+│   ├── main.py                             ← FastAPI application
 │   ├── schemas.py                          ← Pydantic v2 models
 │   ├── requirements.txt                    ← Python dependencies
-│   ├── .env.example                        ← Backend env var template
+│   ├── .env.example                        ← Environment variables template
 │   └── services/
-│       ├── paypal_service.py               ← PayPal OAuth2, create/send invoice, webhooks
-│       ├── audit_service.py                ← OpenCV + pdf2image checkbox/signature detection
-│       └── deal_extraction_service.py      ← Gemini AI → DealCreateRequest
+│       ├── paypal_service.py               ← PayPal API integration
+│       ├── audit_service.py                ← OpenCV document analysis
+│       └── deal_extraction_service.py      ← Gemini AI extraction
 └── frontend/
     ├── package.json
     ├── next.config.ts
     ├── tailwind.config.ts
     └── src/
         ├── app/
-        │   ├── layout.tsx                  ← Root layout, fonts, metadata
-        │   ├── page.tsx                    ← Main dashboard page
-        │   └── globals.css                 ← Tailwind base + custom tokens
+        │   ├── layout.tsx                  ← Root layout
+        │   ├── page.tsx                    ← Main dashboard
+        │   └── globals.css                 ← Tailwind + AG Grid theme
         ├── components/
-        │   ├── DealTable.tsx               ← AG Grid table, cell renderers, row actions
-        │   ├── AuditModal.tsx              ← Split-view PDF + bounding box overlay + terminal
-        │   ├── DealInputPanel.tsx          ← Text input + Web Speech API mic button
-        │   ├── StatusBadge.tsx             ← Reusable Tailwind status chip component
-        │   ├── ReasoningTerminal.tsx       ← Scrollable log of agent reasoning lines
-        │   └── PayPalInvoicePanel.tsx      ← Invoice summary card + send/view actions
+        │   ├── DealTable.tsx               ← AG Grid table
+        │   ├── AuditModal.tsx              ← PDF audit modal
+        │   ├── DealInputPanel.tsx          ← Voice/text input
+        │   ├── StatusBadge.tsx             ← Status component
+        │   ├── ReasoningTerminal.tsx       ├── Agent reasoning log
+        │   └── PayPalInvoicePanel.tsx      ← Invoice actions
         ├── hooks/
-        │   └── useDeals.ts                 ← SWR data fetching hook for /api/deals
+        │   └── useDeals.ts                 ← SWR data fetching
         └── types/
-            └── index.ts                    ← TypeScript types mirroring Pydantic schemas
+            └── index.ts                    ← TypeScript types
 ```
 
----
+## 🏗 Deployment on Render
 
-## Prerequisites
+### Backend Service (FastAPI)
 
-- **Python 3.11+** installed
-- **Node.js 18+** installed
-- **Supabase account** (free tier is sufficient)
-- **PayPal Developer account** (Sandbox access)
-- **Google Gemini API key** (Get from https://makersuite.google.com/app/apikey)
+- **Service Type:** Web Service
+- **Root Directory:** `backend`
+- **Build Command:** `pip install -r requirements.txt`
+- **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Environment Variables:**
+  - `PAYPAL_CLIENT_ID`
+  - `PAYPAL_CLIENT_SECRET`
+  - `PAYPAL_BASE_URL`
+  - `PAYPAL_WEBHOOK_ID`
+  - `GEMINI_API_KEY`
+  - `GEMINI_MODEL`
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `FRONTEND_ORIGIN` (deployed frontend URL)
+
+### Frontend Service (Next.js)
+
+- **Service Type:** Web Service
+- **Root Directory:** `frontend`
+- **Build Command:** `npm run build`
+- **Start Command:** `npm start`
+- **Environment Variables:**
+  - `NEXT_PUBLIC_API_URL` (deployed backend URL)
+
+### Database & Storage
+
+- **Provider:** Supabase
+- **Database:** PostgreSQL with `deals` and `audit_logs` tables
+- **Storage:** `deal-documents` bucket for PDF uploads
+
+## 💻 Local Development
+
+### Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+**
+- **Poppler** (for `pdf2image` on Windows)
+  - Download from [poppler-windows](https://github.com/oschwartz10612/poppler-windows)
+  - Add to PATH or set `POPPLER_PATH` environment variable
+- **Supabase account** (free tier)
+- **PayPal Developer account** (Sandbox)
+- **Google Gemini API key** (from [Google AI Studio](https://makersuite.google.com/app/apikey))
 - **ngrok** (for local webhook tunneling)
 
----
-
-## Setup Instructions
-
-### 1. Database Setup (Supabase)
+### Database Setup (Supabase)
 
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Go to **SQL Editor** → **New Query**
@@ -80,87 +129,46 @@ c:\Proyectos\Paypal AI Hackaton\
 5. In **Project Settings** → **API**, note down:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
-6. In **Storage**, create a bucket named `deal-documents` (public bucket for demo purposes)
+6. In **Storage**, create a bucket named `deal-documents` (public bucket for demo)
 
-### 2. Backend Setup
+### Backend Setup
 
 ```bash
 cd backend
-
-# Install Python dependencies
 pip install -r requirements.txt
-
-# Create .env file from template
 cp .env.example .env
-
-# Edit .env with your actual values:
-# - PAYPAL_CLIENT_ID (from PayPal Developer Dashboard)
-# - PAYPAL_CLIENT_SECRET (from PayPal Developer Dashboard)
-# - PAYPAL_WEBHOOK_ID (create webhook in PayPal, get ID)
-# - GEMINI_API_KEY (from Google AI Studio)
-# - SUPABASE_URL (from Supabase Project Settings)
-# - SUPABASE_SERVICE_ROLE_KEY (from Supabase Project Settings)
-# - FRONTEND_ORIGIN=http://localhost:3000
-
-# Start the FastAPI server
+# Edit .env with your credentials
 uvicorn main:app --reload --port 8000
 ```
 
-The backend will run on `http://localhost:8000`.
-
-### 3. Frontend Setup
+### Frontend Setup
 
 ```bash
 cd frontend
-
-# Install Node dependencies
 npm install
-
-# Create .env.local file (copy the following manually):
-# NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Start the Next.js dev server
+# Create .env.local with: NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
-The frontend will run on `http://localhost:3000`.
-
-### 4. PayPal Webhook Setup (Local Development)
+### PayPal Webhook Setup (Local)
 
 ```bash
-# Install ngrok (if not already installed)
-# Download from https://ngrok.com/download
-
-# Start ngrok tunnel to expose localhost:8000
 ngrok http 8000
-
-# Copy the HTTPS forwarding URL, e.g. https://abc123.ngrok.io
+# Copy the HTTPS forwarding URL
 ```
 
 1. Go to [PayPal Developer Dashboard](https://developer.paypal.com/developer/applications)
-2. Select your Sandbox app
-3. Go to **Webhooks** → **Add Webhook**
-4. Set URL to: `https://<your-ngrok-url>/api/webhooks/paypal`
-5. Select event: `INVOICING.INVOICE.PAID`
-6. Copy the **Webhook ID** and add it to your backend `.env` file as `PAYPAL_WEBHOOK_ID`
+2. Select your Sandbox app → **Webhooks** → **Add Webhook**
+3. Set URL to: `https://<your-ngrok-url>/api/webhooks/paypal`
+4. Select event: `INVOICING.INVOICE.PAID`
+5. Copy the **Webhook ID** and add it to `backend/.env` as `PAYPAL_WEBHOOK_ID`
 
----
-
-## Verification
+## ✅ Verification
 
 ### Health Check
 
 ```bash
 curl http://localhost:8000/health
-```
-
-Expected response:
-```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "service": "Deal2Pay AI Backend"
-}
 ```
 
 ### Create a Test Deal
@@ -176,46 +184,19 @@ curl -X POST http://localhost:8000/api/deals/create \
 ### Manual E2E Flow
 
 1. Open `http://localhost:3000` → enter or speak a deal description
-2. Confirm extracted deal preview → click "Extract & Create Invoice"
-3. Verify new row appears in AG Grid with `DRAFT_LOCKED` status
-4. Click "Run Audit" → upload a PDF delivery document with checkboxes/signature
-5. Verify bounding boxes render over PDF, reasoning log populates
-6. If audit passes → click "Send Invoice" → verify PayPal Sandbox email
-7. Simulate payment in PayPal Sandbox → verify AG Grid row updates to `PAID`
+2. Click "Extract & Create Invoice" → verify new row in AG Grid with `DRAFT_LOCKED` status
+3. Click "Run Audit" → upload PDF with checkboxes/signature
+4. Verify bounding boxes render over PDF, reasoning log populates
+5. If audit passes → click "Send Invoice" → verify PayPal Sandbox email
+6. Simulate payment in PayPal Sandbox → verify AG Grid updates to `PAID`
 
----
+## 🏆 Sponsor Tracks
 
-## Deployment
+- **PayPal:** Best Use of Agentic Commerce & Best Use of PayPal + AI
+- **AG Grid:** Interactive Control Grid (Community edition)
+- **Render:** Full-Stack Deployment (FastAPI + Next.js)
+- **Postman:** Public testing collection
 
-### Backend (Render)
-
-1. Push your code to GitHub
-2. Create a new **Web Service** on [Render.com](https://render.com)
-3. Connect your GitHub repository
-4. Set environment variables in Render dashboard
-5. Deploy — Render will automatically install dependencies and run `uvicorn main:app --host 0.0.0.0 --port $PORT`
-
-### Frontend (Vercel)
-
-1. Push your code to GitHub
-2. Import your project on [Vercel.com](https://vercel.com)
-3. Set `NEXT_PUBLIC_API_URL` to your deployed backend URL
-4. Deploy — Vercel will automatically build and deploy
-
----
-
-## Features
-
-- **Natural Language Deal Extraction**: Type or speak deal descriptions, and Gemini AI extracts structured invoice data
-- **Voice Input**: Browser-native Web Speech API for hands-free deal entry
-- **Document Audit**: OpenCV-powered detection of checkboxes, signatures, and dates in PDF delivery documents
-- **Visual Feedback**: Bounding box overlays on PDFs show detected elements with confidence scores
-- **Reasoning Log**: Terminal-style display of the agent's decision-making process
-- **PayPal Integration**: Automatic DRAFT invoice creation, audit-locked release, and webhook-based payment tracking
-- **Real-time Updates**: SWR polling keeps the dashboard in sync with PayPal webhooks
-
----
-
-## License
+## 📄 License
 
 MIT License — Created for PayPal AI Hackathon 2026

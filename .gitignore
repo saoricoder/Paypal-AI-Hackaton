@@ -60,3 +60,7 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Internal project documentation
+.project-blueprint.md
+PROJECT_SPEC.md
