@@ -64,3 +64,6 @@ logs/
 # Internal project documentation
 .project-blueprint.md
 PROJECT_SPEC.md
+
+# One-shot test / debug scripts (never commit tokens)
+backend/test_*.py
