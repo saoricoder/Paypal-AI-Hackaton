@@ -1,6 +1,6 @@
 """
 main.py — Deal2Pay AI Backend
-FastAPI application with all routes, CORS, and Supabase integration.
+FastAPI application with all routes, CORS, and Render PostgreSQL integration.
 
 Routes:
     GET  /health
@@ -19,9 +19,9 @@ import os
 from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
+import psycopg2
 from dotenv import load_dotenv
 from fastapi import (
-    BackgroundTasks,
     FastAPI,
     File,
     Form,
@@ -32,17 +32,17 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from supabase import Client, create_client
+from pydantic import BaseModel
 
+from database import check_db_connectivity, get_db_connection
 from schemas import (
     AuditResponse,
     AuditStatus,
-    DealCreateRequest,
     DealCreateResponse,
-    DealRecord,
     ErrorResponse,
     HealthResponse,
     PaymentStatus,
+    ValidationRule,
     WebhookEvent,
 )
 from services.audit_service import AuditService
@@ -68,7 +68,6 @@ logger = logging.getLogger(__name__)
 _paypal_service:     PayPalService | None = None
 _extraction_service: DealExtractionService | None = None
 _audit_service:      AuditService | None = None
-_supabase:           Client | None = None
 
 
 def get_paypal() -> PayPalService:
@@ -89,32 +88,29 @@ def get_audit() -> AuditService:
     return _audit_service
 
 
-def get_supabase() -> Client:
-    if _supabase is None:
-        raise RuntimeError("Supabase client not initialized.")
-    return _supabase
-
-
 # ============================================================
 # Application lifespan (startup / shutdown)
 # ============================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _paypal_service, _extraction_service, _audit_service, _supabase
+    global _paypal_service, _extraction_service, _audit_service
 
     logger.info("Deal2Pay AI backend starting up...")
 
     # Validate required environment variables
     required_vars = [
         "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
-        "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY",
+        "GEMINI_API_KEY", "DATABASE_URL",
     ]
     missing = [v for v in required_vars if not os.getenv(v)]
     if missing:
-        logger.warning("Missing environment variables: %s — some features will be disabled.", missing)
+        logger.warning(
+            "Missing environment variables: %s — some features will be disabled.",
+            missing,
+        )
 
-    # Initialize services
+    # Initialize domain services
     _paypal_service = PayPalService(
         client_id=os.getenv("PAYPAL_CLIENT_ID", ""),
         client_secret=os.getenv("PAYPAL_CLIENT_SECRET", ""),
@@ -129,14 +125,15 @@ async def lifespan(app: FastAPI):
 
     _audit_service = AuditService()
 
-    # Initialize Supabase client
-    supabase_url = os.getenv("SUPABASE_URL", "")
-    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    if supabase_url and supabase_key:
-        _supabase = create_client(supabase_url, supabase_key)
-        logger.info("Supabase client initialized.")
+    # Verify database connectivity and schema
+    db_ok = check_db_connectivity()
+    if db_ok:
+        logger.info("PostgreSQL (Render) connection verified successfully.")
     else:
-        logger.warning("Supabase not configured — database operations will fail.")
+        logger.warning(
+            "PostgreSQL connectivity check failed. "
+            "Ensure DATABASE_URL is set and database/schema.sql has been applied."
+        )
 
     logger.info("All services initialized. Deal2Pay AI is ready.")
     yield
@@ -196,29 +193,38 @@ async def health_check():
 @app.get("/api/deals", tags=["Deals"])
 async def list_deals():
     """
-    Return all deals from Supabase, ordered by creation date descending.
-    Consumed by the AG Grid dashboard via SWR polling.
+    Return all deals from the PostgreSQL database, ordered by creation date
+    descending. Consumed by the AG Grid dashboard via SWR polling.
     """
-    db = get_supabase()
-    result = (
-        db.table("deals")
-        .select("*")
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return {"deals": result.data or []}
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id, raw_text, client_email, client_name,
+                    line_items, total_amount, validation_rules,
+                    paypal_invoice_id, paypal_invoice_url,
+                    audit_status, payment_status,
+                    created_at, updated_at
+                FROM deals
+                ORDER BY created_at DESC;
+                """
+            )
+            rows = cur.fetchall()
+        # RealDictCursor returns dict-like rows; convert to plain dicts for JSON
+        deals = [dict(row) for row in rows]
+        return {"deals": deals}
+    except psycopg2.Error as exc:
+        logger.error("DB error fetching deals: %s", exc)
+        raise HTTPException(status_code=500, detail="Database error while fetching deals.")
+    finally:
+        conn.close()
 
 
 # ============================================================
 # Route: Create Deal + PayPal DRAFT Invoice
 # ============================================================
-
-class RawDealInput(dict):
-    pass
-
-
-from pydantic import BaseModel
-
 
 class CreateDealBody(BaseModel):
     raw_text: str
@@ -234,12 +240,11 @@ async def create_deal(body: CreateDealBody):
     """
     1. Extract structured deal from raw_text via Gemini AI.
     2. Create a DRAFT invoice in PayPal Sandbox.
-    3. Store the deal in Supabase with status DRAFT_LOCKED.
+    3. Persist the deal in PostgreSQL with status DRAFT_LOCKED.
     4. Return deal_id + paypal_invoice_id.
     """
     extraction = get_extraction()
     paypal     = get_paypal()
-    db         = get_supabase()
 
     # Step 1 — LLM extraction
     try:
@@ -261,23 +266,50 @@ async def create_deal(body: CreateDealBody):
             detail=f"PayPal invoice creation failed: {exc}",
         )
 
-    # Step 3 — Persist to Supabase
+    # Step 3 — Persist to PostgreSQL
     deal_id = str(uuid4())
-    record = {
-        "id":                deal_id,
-        "raw_text":          deal.raw_text,
-        "client_email":      deal.client_email,
-        "client_name":       deal.client_name,
-        "line_items":        [item.model_dump() for item in deal.line_items],
-        "total_amount":      deal.total_amount,
-        "validation_rules":  [r.model_dump() for r in deal.validation_rules],
-        "paypal_invoice_id": invoice_id,
-        "paypal_invoice_url": invoice_url,
-        "audit_status":      AuditStatus.PENDING.value,
-        "payment_status":    PaymentStatus.DRAFT_LOCKED.value,
-    }
 
-    db.table("deals").insert(record).execute()
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO deals (
+                    id, raw_text, client_email, client_name,
+                    line_items, total_amount, validation_rules,
+                    paypal_invoice_id, paypal_invoice_url,
+                    audit_status, payment_status
+                ) VALUES (
+                    %s, %s, %s, %s,
+                    %s::jsonb, %s, %s::jsonb,
+                    %s, %s,
+                    %s, %s
+                )
+                RETURNING id, paypal_invoice_id, paypal_invoice_url, payment_status;
+                """,
+                (
+                    deal_id,
+                    deal.raw_text,
+                    deal.client_email,
+                    deal.client_name,
+                    json.dumps([item.model_dump() for item in deal.line_items]),
+                    deal.total_amount,
+                    json.dumps([r.model_dump() for r in deal.validation_rules]),
+                    invoice_id,
+                    invoice_url,
+                    AuditStatus.PENDING.value,
+                    PaymentStatus.DRAFT_LOCKED.value,
+                ),
+            )
+            conn.commit()
+
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.error("DB error inserting deal %s: %s", deal_id, exc)
+        raise HTTPException(status_code=500, detail="Database error while saving deal.")
+    finally:
+        conn.close()
+
     logger.info("Deal %s created with PayPal invoice %s", deal_id, invoice_id)
 
     return DealCreateResponse(
@@ -303,14 +335,13 @@ async def verify_document(
 ):
     """
     1. Accept a multipart PDF upload.
-    2. Optionally store in Supabase Storage.
+    2. Fetch the deal's validation rules from PostgreSQL.
     3. Run OpenCV detection pipeline.
-    4. Update deal audit_status in Supabase.
+    4. Update deal audit_status in PostgreSQL.
     5. Insert an audit_log record.
     6. Return AuditResponse with bounding boxes and reasoning log.
     """
-    audit  = get_audit()
-    db     = get_supabase()
+    audit = get_audit()
 
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -321,34 +352,41 @@ async def verify_document(
     if len(pdf_bytes) < 100:
         raise HTTPException(status_code=400, detail="Uploaded file appears to be empty or corrupt.")
 
-    # Fetch the deal's validation rules from Supabase
-    deal_result = db.table("deals").select("*").eq("id", deal_id).single().execute()
-    if not deal_result.data:
-        raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found.")
-
-    deal_data = deal_result.data
-    from schemas import ValidationRule, RuleType
-    validation_rules = [
-        ValidationRule(**r) for r in (deal_data.get("validation_rules") or [])
-    ]
-
-    # Update deal status to IN_PROGRESS
-    db.table("deals").update({"audit_status": AuditStatus.IN_PROGRESS.value}).eq("id", deal_id).execute()
-
-    # Optionally upload PDF to Supabase Storage
-    storage_path: str | None = None
+    # --- Fetch deal & validation rules ---
+    conn = get_db_connection()
     try:
-        storage_path = f"audits/{deal_id}/{file.filename}"
-        db.storage.from_("deal-documents").upload(
-            path=storage_path,
-            file=pdf_bytes,
-            file_options={"content-type": "application/pdf"},
-        )
-    except Exception as exc:
-        logger.warning("Supabase Storage upload failed (non-fatal): %s", exc)
-        storage_path = None
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, validation_rules FROM deals WHERE id = %s;",
+                (deal_id,),
+            )
+            deal_row = cur.fetchone()
 
-    # Run OpenCV audit
+        if not deal_row:
+            raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found.")
+
+        raw_rules = deal_row["validation_rules"] or []
+        # PostgreSQL JSONB is already deserialized by psycopg2 → list of dicts
+        if isinstance(raw_rules, str):
+            raw_rules = json.loads(raw_rules)
+        validation_rules = [ValidationRule(**r) for r in raw_rules]
+
+        # Mark audit as IN_PROGRESS
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE deals SET audit_status = %s, updated_at = NOW() WHERE id = %s;",
+                (AuditStatus.IN_PROGRESS.value, deal_id),
+            )
+        conn.commit()
+    except HTTPException:
+        raise
+    except psycopg2.Error as exc:
+        logger.error("DB error fetching deal %s: %s", deal_id, exc)
+        raise HTTPException(status_code=500, detail="Database error while fetching deal.")
+    finally:
+        conn.close()
+
+    # --- Run OpenCV audit ---
     try:
         audit_result = audit.analyze_document(
             pdf_bytes=pdf_bytes,
@@ -357,30 +395,66 @@ async def verify_document(
         )
     except Exception as exc:
         logger.exception("Audit analysis failed: %s", exc)
-        db.table("deals").update({"audit_status": AuditStatus.FAILED.value}).eq("id", deal_id).execute()
+        # Mark deal as FAILED before re-raising
+        _update_audit_status(deal_id, AuditStatus.FAILED)
         raise HTTPException(status_code=500, detail=f"Audit engine error: {exc}")
 
-    # Update deal audit_status
+    # --- Persist audit results ---
     new_audit_status = AuditStatus.APPROVED if audit_result.overall_pass else AuditStatus.FAILED
-    db.table("deals").update({"audit_status": new_audit_status.value}).eq("id", deal_id).execute()
 
-    # Insert audit log
-    log_record = {
-        "deal_id":          deal_id,
-        "pdf_storage_path": storage_path,
-        "overall_pass":     audit_result.overall_pass,
-        "bounding_boxes":   [b.model_dump() for b in audit_result.bounding_boxes],
-        "reasoning_log":    audit_result.reasoning_log,
-    }
-    db.table("audit_logs").insert(log_record).execute()
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Update deal audit_status
+            cur.execute(
+                "UPDATE deals SET audit_status = %s, updated_at = NOW() WHERE id = %s;",
+                (new_audit_status.value, deal_id),
+            )
+            # Insert audit log record
+            cur.execute(
+                """
+                INSERT INTO audit_logs (
+                    deal_id, overall_pass, bounding_boxes, reasoning_log
+                ) VALUES (%s, %s, %s::jsonb, %s::jsonb);
+                """,
+                (
+                    deal_id,
+                    audit_result.overall_pass,
+                    json.dumps([b.model_dump() for b in audit_result.bounding_boxes]),
+                    json.dumps(audit_result.reasoning_log),
+                ),
+            )
+        conn.commit()
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.error("DB error saving audit result for deal %s: %s", deal_id, exc)
+        # Non-fatal: audit ran successfully, just log the persistence failure
+    finally:
+        conn.close()
 
     logger.info(
         "Audit complete for deal %s: %s",
         deal_id,
         "PASSED" if audit_result.overall_pass else "FAILED",
     )
-
     return audit_result
+
+
+def _update_audit_status(deal_id: str, new_status: AuditStatus) -> None:
+    """Best-effort helper to update audit_status without raising."""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE deals SET audit_status = %s, updated_at = NOW() WHERE id = %s;",
+                    (new_status.value, deal_id),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("Could not update audit_status for deal %s: %s", deal_id, exc)
 
 
 # ============================================================
@@ -398,22 +472,30 @@ async def send_invoice(invoice_id: str, deal_id: str):
     Updates payment_status to SENT on success.
     """
     paypal = get_paypal()
-    db     = get_supabase()
 
     # Verify deal exists and audit is approved
-    deal_result = (
-        db.table("deals")
-        .select("audit_status, payment_status")
-        .eq("paypal_invoice_id", invoice_id)
-        .single()
-        .execute()
-    )
-    if not deal_result.data:
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT audit_status, payment_status
+                FROM deals
+                WHERE paypal_invoice_id = %s;
+                """,
+                (invoice_id,),
+            )
+            deal_row = cur.fetchone()
+    except psycopg2.Error as exc:
+        logger.error("DB error checking deal for invoice %s: %s", invoice_id, exc)
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    if not deal_row:
         raise HTTPException(status_code=404, detail="Deal not found for this invoice ID.")
 
-    deal_data    = deal_result.data
-    audit_status = deal_data.get("audit_status")
-
+    audit_status = deal_row["audit_status"]
     if audit_status != AuditStatus.APPROVED.value:
         raise HTTPException(
             status_code=403,
@@ -430,12 +512,29 @@ async def send_invoice(invoice_id: str, deal_id: str):
         raise HTTPException(status_code=502, detail=str(exc))
 
     # Update payment_status to SENT
-    db.table("deals").update(
-        {"payment_status": PaymentStatus.SENT.value}
-    ).eq("paypal_invoice_id", invoice_id).execute()
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE deals
+                SET payment_status = %s, updated_at = NOW()
+                WHERE paypal_invoice_id = %s;
+                """,
+                (PaymentStatus.SENT.value, invoice_id),
+            )
+        conn.commit()
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.error("DB error updating payment_status for invoice %s: %s", invoice_id, exc)
+    finally:
+        conn.close()
 
     logger.info("Invoice %s sent autonomously.", invoice_id)
-    return {"message": f"Invoice {invoice_id} sent successfully.", "payment_status": PaymentStatus.SENT.value}
+    return {
+        "message": f"Invoice {invoice_id} sent successfully.",
+        "payment_status": PaymentStatus.SENT.value,
+    }
 
 
 # ============================================================
@@ -453,7 +552,6 @@ async def paypal_webhook(request: Request):
       Events: INVOICING.INVOICE.PAID
     """
     paypal = get_paypal()
-    db     = get_supabase()
 
     raw_body_bytes = await request.body()
 
@@ -480,10 +578,25 @@ async def paypal_webhook(request: Request):
         invoice_id = resource.get("id", "")
 
         if invoice_id:
-            db.table("deals").update(
-                {"payment_status": PaymentStatus.PAID.value}
-            ).eq("paypal_invoice_id", invoice_id).execute()
-
-            logger.info("Deal updated to PAID for invoice %s", invoice_id)
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        UPDATE deals
+                        SET payment_status = %s, updated_at = NOW()
+                        WHERE paypal_invoice_id = %s;
+                        """,
+                        (PaymentStatus.PAID.value, invoice_id),
+                    )
+                conn.commit()
+                logger.info("Deal updated to PAID for invoice %s", invoice_id)
+            except psycopg2.Error as exc:
+                conn.rollback()
+                logger.error(
+                    "DB error marking invoice %s as PAID: %s", invoice_id, exc
+                )
+            finally:
+                conn.close()
 
     return {"received": True, "event_type": event_type}

@@ -1,6 +1,6 @@
 -- ============================================================
--- Deal2Pay AI — Supabase Schema
--- Run this once in: Supabase Dashboard → SQL Editor → New Query
+-- Deal2Pay AI - PostgreSQL Schema (Render Managed PostgreSQL)
+-- Run once against your Render PostgreSQL database:
 -- ============================================================
 
 -- Enable UUID generation
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE TABLE IF NOT EXISTS audit_logs (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     deal_id             UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-    pdf_storage_path    TEXT,                                   -- Supabase Storage path of the uploaded PDF
+    pdf_storage_path    TEXT,                                   -- Optional: path or URL of the uploaded PDF
     overall_pass        BOOLEAN NOT NULL DEFAULT FALSE,
     bounding_boxes      JSONB NOT NULL DEFAULT '[]'::JSONB,     -- Array of BoundingBox objects with % coordinates
     reasoning_log       JSONB NOT NULL DEFAULT '[]'::JSONB,     -- Array of agent reasoning strings

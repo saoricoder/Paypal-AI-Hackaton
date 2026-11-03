@@ -77,7 +77,7 @@ class DealCreateRequest(BaseModel):
 
 
 class DealRecord(BaseModel):
-    """Full deal record as stored in Supabase and returned by GET /api/deals."""
+    """Full deal record as stored in PostgreSQL and returned by GET /api/deals."""
     id:                UUID
     raw_text:          str
     client_email:      str
@@ -137,7 +137,7 @@ class AuditResponse(BaseModel):
 
 
 class AuditLogRecord(BaseModel):
-    """Audit log entry as stored in Supabase audit_logs table."""
+    """Audit log entry as stored in the PostgreSQL audit_logs table."""
     id:               UUID
     deal_id:          UUID
     pdf_storage_path: str | None
