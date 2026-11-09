@@ -7,25 +7,25 @@
    ============================================================ */
 
 .ag-theme-alpine-dark {
-  --ag-background-color: #0f0f14;
-  --ag-foreground-color: #e5e5e5;
-  --ag-border-color: #2a2a35;
-  --ag-cell-horizontal-border: #2a2a35;
-  --ag-row-hover-color: #1a1a24;
-  --ag-header-background-color: #14141a;
-  --ag-odd-row-background-color: #0a0a0f;
-  --ag-card-border-color: #2a2a35;
-  --ag-range-selection-background-color: rgba(139, 92, 246, 0.2);
-  --ag-range-selection-border-color: #8b5cf6;
+  --ag-background-color: #0b0f17;
+  --ag-foreground-color: #f1f5f9;
+  --ag-border-color: rgba(51, 65, 85, 0.6);
+  --ag-cell-horizontal-border: rgba(51, 65, 85, 0.4);
+  --ag-row-hover-color: #151d2c;
+  --ag-header-background-color: #151d2c;
+  --ag-odd-row-background-color: #0d1117;
+  --ag-card-border-color: rgba(51, 65, 85, 0.6);
+  --ag-range-selection-background-color: rgba(56, 189, 248, 0.2);
+  --ag-range-selection-border-color: #38bdf8;
 }
 
 .ag-theme-alpine-dark .ag-header {
-  color: #a1a1aa;
+  color: #cbd5e1;
   font-weight: 600;
 }
 
 .ag-theme-alpine-dark .ag-cell {
-  color: #e5e5e5;
+  color: #f1f5f9;
 }
 
 /* ============================================================

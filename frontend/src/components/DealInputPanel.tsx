@@ -13,6 +13,12 @@ interface DealInputPanelProps {
   onCreateDeal: (deal: CreateDealPayload) => Promise<void>;
 }
 
+const EXAMPLE_DEALS = [
+  "Web security audit for client@acme.com — 2 hours at $75/hr plus a $50 compliance review. Total $200. Requires a signed statement of work with 2 checkboxes.",
+  "Penetration testing engagement for security@globex.com — 1 day at $1,200. Total $1,200. Needs signed contract and delivery report with signature and date fields.",
+  "SOC 2 readiness consultation for dev@initech.com — 3 hours at $150/hr. Total $450. Requires signed NDA and checklist with 3 required items.",
+];
+
 export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
   const [rawText, setRawText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -83,10 +89,12 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
   };
 
   return (
-    <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-6">
+    <div className="bg-[#151D2C] border border-slate-700/80 rounded-xl p-6 mb-6 shadow-xl">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-purple-400" />
-        <h2 className="text-lg font-semibold text-white">Describe Your Deal</h2>
+        <Sparkles className="w-5 h-5 text-blue-400" />
+        <h2 className="text-lg font-semibold text-white tracking-tight">
+          Describe Your Deal
+        </h2>
       </div>
 
       <div className="space-y-4">
@@ -95,15 +103,15 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Type or speak your deal description... e.g., 'Web audit for client@acme.com, 2hrs at $50, plus $50 security review. Total $150. Needs signed work order with 2 checkboxes.'"
-            className="w-full h-32 bg-gray-950 border border-gray-700 rounded-lg p-4 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+            className="w-full h-32 bg-[#0B0F17] text-slate-100 border border-slate-700 rounded-lg p-4 text-sm leading-relaxed placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
           <button
             onClick={startRecording}
             disabled={isRecording}
-            className={`absolute bottom-3 right-3 p-2 rounded-lg transition-colors ${
+            className={`absolute bottom-3 right-3 p-2.5 rounded-lg transition-colors ${
               isRecording
-                ? "bg-red-500/20 text-red-400 animate-pulse"
-                : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600"
             }`}
             title="Start voice input"
           >
@@ -111,11 +119,26 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
           </button>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-slate-500 self-center">Try an example:</span>
+          {EXAMPLE_DEALS.map((example, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setRawText(example)}
+              title={example}
+              className="text-xs px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+            >
+              Example {i + 1}
+            </button>
+          ))}
+        </div>
+
         <div className="flex justify-end">
           <button
             onClick={handleCreateDeal}
             disabled={!rawText.trim() || isProcessing}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-white font-semibold rounded-lg text-sm shadow-md transition-all"
           >
             {isProcessing ? (
               "Processing..."

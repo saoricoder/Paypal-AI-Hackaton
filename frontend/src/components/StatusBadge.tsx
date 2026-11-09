@@ -17,7 +17,7 @@ export function StatusBadge({ status, type = "audit" }: StatusBadgeProps) {
       switch (status) {
         case "PENDING":
           return {
-            color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+            color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
             icon: <Clock className="w-3 h-3" />,
             label: "Pending",
           };
@@ -35,7 +35,7 @@ export function StatusBadge({ status, type = "audit" }: StatusBadgeProps) {
           };
         case "FAILED":
           return {
-            color: "bg-red-500/20 text-red-400 border-red-500/30",
+            color: "bg-rose-500/20 text-rose-400 border-rose-500/30",
             icon: <X className="w-3 h-3" />,
             label: "Failed",
           };
@@ -52,7 +52,7 @@ export function StatusBadge({ status, type = "audit" }: StatusBadgeProps) {
         case "DRAFT":
         case "DRAFT_LOCKED":
           return {
-            color: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+            color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
             icon: <Clock className="w-3 h-3" />,
             label: status === "DRAFT_LOCKED" ? "Draft (Locked)" : "Draft",
           };
@@ -70,7 +70,7 @@ export function StatusBadge({ status, type = "audit" }: StatusBadgeProps) {
           };
         case "CANCELLED":
           return {
-            color: "bg-red-500/20 text-red-400 border-red-500/30",
+            color: "bg-rose-500/20 text-rose-400 border-rose-500/30",
             icon: <X className="w-3 h-3" />,
             label: "Cancelled",
           };

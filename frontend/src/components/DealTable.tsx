@@ -7,12 +7,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { ColDef } from "ag-grid-community";
+import {
+  ColDef,
+  ModuleRegistry,
+  AllCommunityModule,
+  ValidationModule,
+} from "ag-grid-community";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 import { DealRecord } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { FileText, Send, ExternalLink, CheckCircle } from "lucide-react";
+
+ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
 interface DealTableProps {
   deals: DealRecord[];
@@ -27,7 +34,8 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
       field: "id",
       headerName: "Deal ID",
       width: 100,
-      valueGetter: (params) => params.data.id.slice(0, 8) + "...",
+      valueGetter: (params) =>
+        params.data ? params.data.id.slice(0, 8) + "..." : "",
     },
     {
       field: "client_name",
@@ -57,7 +65,7 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
       field: "paypal_invoice_id",
       headerName: "Invoice ID",
       width: 120,
-      valueGetter: (params) => params.data.paypal_invoice_id || "—",
+      valueGetter: (params) => params.data?.paypal_invoice_id || "—",
     },
     {
       field: "payment_status",
@@ -74,30 +82,33 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
       valueFormatter: (params) => new Date(params.value).toLocaleString(),
     },
     {
-      field: "actions",
+      colId: "actions",
       headerName: "Actions",
       width: 160,
-      cellRenderer: (params: { data: DealRecord }) => (
+      cellRenderer: (params: { data?: DealRecord }) => {
+        const data = params.data;
+        if (!data) return null;
+        return (
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onRunAudit(params.data.id)}
+            onClick={() => onRunAudit(data.id)}
             className="p-1.5 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
             title="Run Audit"
           >
             <FileText className="w-4 h-4" />
           </button>
-          {params.data.audit_status === "APPROVED" && params.data.payment_status !== "PAID" && (
+          {data.audit_status === "APPROVED" && data.payment_status !== "PAID" && (
             <button
-              onClick={() => onSendInvoice(params.data.paypal_invoice_id!)}
+              onClick={() => onSendInvoice(data.paypal_invoice_id!)}
               className="p-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
               title="Send Invoice"
             >
               <Send className="w-4 h-4" />
             </button>
           )}
-          {params.data.paypal_invoice_url && (
+          {data.paypal_invoice_url && (
             <a
-              href={params.data.paypal_invoice_url}
+              href={data.paypal_invoice_url}
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 transition-colors"
@@ -106,16 +117,17 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
               <ExternalLink className="w-4 h-4" />
             </a>
           )}
-          {params.data.payment_status === "PAID" && (
-            <CheckCircle className="w-4 h-4 text-emerald-400" title="Paid" />
+          {data.payment_status === "PAID" && (
+            <CheckCircle className="w-4 h-4 text-emerald-400" aria-label="Paid" />
           )}
         </div>
-      ),
+        );
+      },
     },
   ]);
 
-  const getRowClass = (params: { data: DealRecord }) => {
-    return params.data.payment_status === "PAID" ? "bg-emerald-950/40" : "";
+  const getRowClass = (params: { data?: DealRecord }) => {
+    return params.data?.payment_status === "PAID" ? "bg-emerald-950/40" : "";
   };
 
   // Auto-size columns on first data render
@@ -126,19 +138,31 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
   }, [deals, columnDefs]);
 
   return (
-    <div className="ag-theme-alpine-dark w-full h-[500px] rounded-lg border border-gray-800">
+    <div
+      className="ag-theme-alpine-dark w-full rounded-xl overflow-hidden shadow-2xl border border-slate-700/60"
+      style={{ height: "520px", width: "100%" }}
+    >
       <AgGridReact
         ref={gridRef}
         rowData={deals}
         columnDefs={columnDefs}
+        getRowId={(params) =>
+          String(params.data.id ?? (params.data as { deal_id?: string }).deal_id)
+        }
+        animateRows={true}
+        pagination={true}
+        paginationPageSize={10}
         defaultColDef={{
+          flex: 1,
+          minWidth: 120,
           resizable: true,
           sortable: true,
           filter: true,
         }}
+        theme="legacy"
         getRowClass={getRowClass}
-        domLayout="autoHeight"
-        rowSelection="single"
+        rowSelection={{ mode: "singleRow" }}
+        paginationPageSizeSelector={[10, 20, 50, 100]}
       />
     </div>
   );
