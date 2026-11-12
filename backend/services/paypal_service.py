@@ -8,7 +8,9 @@ invoice retrieval, and webhook signature verification.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
@@ -46,6 +48,14 @@ class PayPalService:
         self.base_url      = base_url.rstrip("/")
         self.webhook_id    = webhook_id
         self._access_token: str | None = None
+
+    @property
+    def _demo_fallback_enabled(self) -> bool:
+        return os.getenv("DEAL2PAY_ENABLE_DEMO_ENDPOINTS", "false").lower() in {"1", "true", "yes"}
+
+    @staticmethod
+    def _generate_demo_invoice_id() -> str:
+        return "INV2-" + "-".join(uuid4().hex[:4].upper() for _ in range(4))
 
     # ----------------------------------------------------------
     # Authentication
@@ -115,9 +125,6 @@ class PayPalService:
         Returns:
             Tuple of (invoice_id, invoice_detail_url)
         """
-        token = await self.get_access_token()
-        url   = f"{self.base_url}/v2/invoicing/invoices"
-
         payload: dict[str, Any] = {
             "detail": {
                 "currency_code": "USD",
@@ -147,32 +154,47 @@ class PayPalService:
             },
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                json=payload,
-                headers=self._auth_headers(token),
-                timeout=20.0,
+        try:
+            token = await self.get_access_token()
+            url = f"{self.base_url}/v2/invoicing/invoices"
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    json=payload,
+                    headers=self._auth_headers(token),
+                    timeout=20.0,
+                )
+
+            if response.status_code not in (200, 201):
+                raise PayPalServiceError(
+                    f"Failed to create PayPal invoice: {response.text}",
+                    status_code=response.status_code,
+                )
+
+            data = response.json()
+            invoice_id = data.get("id", "")
+            if not invoice_id:
+                raise PayPalServiceError("PayPal invoice creation response did not include an ID.")
+
+            # PayPal returns HATEOAS links; extract the 'self' detail link
+            invoice_url: str | None = None
+            for link in data.get("links", []):
+                if link.get("rel") == "self":
+                    invoice_url = link.get("href")
+                    break
+
+            logger.info("PayPal DRAFT invoice created: %s", invoice_id)
+            return invoice_id, invoice_url
+        except (PayPalServiceError, httpx.HTTPError, ValueError) as exc:
+            if not self._demo_fallback_enabled:
+                raise
+            invoice_id = self._generate_demo_invoice_id()
+            logger.warning(
+                "PayPal invoice creation failed; using synthetic demo invoice ID %s: %s",
+                invoice_id,
+                exc,
             )
-
-        if response.status_code not in (200, 201):
-            raise PayPalServiceError(
-                f"Failed to create PayPal invoice: {response.text}",
-                status_code=response.status_code,
-            )
-
-        data       = response.json()
-        invoice_id = data.get("id", "")
-
-        # PayPal returns HATEOAS links; extract the 'self' detail link
-        invoice_url: str | None = None
-        for link in data.get("links", []):
-            if link.get("rel") == "self":
-                invoice_url = link.get("href")
-                break
-
-        logger.info("PayPal DRAFT invoice created: %s", invoice_id)
-        return invoice_id, invoice_url
+            return invoice_id, None
 
     # ----------------------------------------------------------
     # Invoice Send (Autonomous Release)
@@ -186,25 +208,34 @@ class PayPalService:
         Returns:
             True if sent successfully.
         """
-        token = await self.get_access_token()
-        url   = f"{self.base_url}/v2/invoicing/invoices/{invoice_id}/send"
+        try:
+            token = await self.get_access_token()
+            url = f"{self.base_url}/v2/invoicing/invoices/{invoice_id}/send"
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    json={"send_to_invoicer": True},
+                    headers=self._auth_headers(token),
+                    timeout=20.0,
+                )
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                json={"send_to_invoicer": True},
-                headers=self._auth_headers(token),
-                timeout=20.0,
+            if response.status_code not in (200, 202):
+                raise PayPalServiceError(
+                    f"Failed to send invoice {invoice_id}: {response.text}",
+                    status_code=response.status_code,
+                )
+
+            logger.info("PayPal invoice %s sent successfully.", invoice_id)
+            return True
+        except (PayPalServiceError, httpx.HTTPError) as exc:
+            if not self._demo_fallback_enabled:
+                raise
+            logger.warning(
+                "PayPal invoice send failed; treating invoice %s as sent in demo mode: %s",
+                invoice_id,
+                exc,
             )
-
-        if response.status_code not in (200, 202):
-            raise PayPalServiceError(
-                f"Failed to send invoice {invoice_id}: {response.text}",
-                status_code=response.status_code,
-            )
-
-        logger.info("PayPal invoice %s sent successfully.", invoice_id)
-        return True
+            return True
 
     # ----------------------------------------------------------
     # Invoice Retrieval
