@@ -3,52 +3,40 @@
 @tailwind utilities;
 
 /* ============================================================
-   Deal2Pay AI — Neon Cyber Theme (Hackathon)
+   Deal2Pay AI — Fintech Dark Theme
    ============================================================ */
 
-:root {
-  --neon-cyan: #00D4FF;
-  --neon-blue: #38BDF8;
-  --bg-deep: #020617;
-  --bg-card: #0a1224;
-  --border-glow: rgba(0, 212, 255, 0.35);
-}
-
 body {
-  background: radial-gradient(ellipse at top, #0c1a3a 0%, #020617 60%);
-  color: #e0f2fe;
+  background-color: #090C15;
+  color: #F8FAFC;
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
 }
 
-/* AG Grid Neon Dark Theme */
+/* AG Grid Dark Theme */
 .ag-theme-alpine-dark {
-  --ag-background-color: #0a1224 !important;
-  --ag-header-background-color: #0f1c36 !important;
-  --ag-header-foreground-color: #7dd3fc !important;
-  --ag-border-color: rgba(0, 212, 255, 0.25) !important;
-  --ag-row-hover-color: rgba(0, 212, 255, 0.08) !important;
-  --ag-foreground-color: #e0f2fe !important;
-  --ag-odd-row-background-color: #08101f;
-  --ag-even-row-background-color: #0a1224;
-  --ag-selected-row-background-color: rgba(0, 212, 255, 0.12);
-  --ag-range-selection-background-color: rgba(0, 212, 255, 0.1);
-  --ag-range-selection-border-color: #00D4FF;
+  --ag-background-color: #0E131F !important;
+  --ag-header-background-color: #151D2E !important;
+  --ag-header-foreground-color: #94A3B8 !important;
+  --ag-border-color: #1E293B !important;
+  --ag-row-hover-color: #162033 !important;
+  --ag-foreground-color: #F8FAFC !important;
+  --ag-data-color: #F1F5F9 !important;
+  --ag-odd-row-background-color: #0B0F1A !important;
+  --ag-even-row-background-color: #0E131F;
+  --ag-selected-row-background-color: rgba(56, 189, 248, 0.12);
+  --ag-range-selection-background-color: rgba(56, 189, 248, 0.1);
+  --ag-range-selection-border-color: #38bdf8;
   --ag-font-size: 13px;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0, 212, 255, 0.08);
 }
 
 .ag-theme-alpine-dark .ag-header-cell-label {
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   font-size: 11px;
-}
-
-.ag-theme-alpine-dark .ag-row {
-  border-bottom: 1px solid rgba(0, 212, 255, 0.08);
 }
 
 .ag-theme-alpine-dark .ag-cell {
@@ -58,25 +46,15 @@ body {
 }
 
 .ag-overlay-no-rows-wrapper {
-  color: #67e8f9;
+  color: #94a3b8;
   font-size: 14px;
 }
 
-/* Glow utilities */
-.glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
-}
-
-.glow-border {
-  border: 1px solid rgba(0, 212, 255, 0.35);
-  box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
-}
-
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.35s ease-out;
+  animation: fade-in 0.3s ease-out;
 }
