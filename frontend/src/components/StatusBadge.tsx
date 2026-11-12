@@ -1,6 +1,5 @@
 /**
- * StatusBadge — Polymorphic badge component for audit and payment statuses.
- * Maps status strings to Tailwind color classes with appropriate animations.
+ * StatusBadge — Neon cyber status indicators
  */
 
 import { AuditStatus, PaymentStatus } from "@/types";
@@ -12,86 +11,42 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, type = "audit" }: StatusBadgeProps) {
-  const getStatusConfig = () => {
+  const getConfig = () => {
     if (type === "audit") {
       switch (status) {
         case "PENDING":
-          return {
-            color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-            icon: <Clock className="w-3 h-3" />,
-            label: "Pending",
-          };
+          return { color: "bg-amber-500/15 text-amber-300 border-amber-400/40", icon: <Clock className="h-3 w-3" />, label: "Pending" };
         case "IN_PROGRESS":
-          return {
-            color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-            icon: <Clock className="w-3 h-3 animate-pulse" />,
-            label: "In Progress",
-          };
+          return { color: "bg-cyan-500/15 text-cyan-300 border-cyan-400/40", icon: <Clock className="h-3 w-3 animate-pulse" />, label: "Auditing" };
         case "APPROVED":
-          return {
-            color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-            icon: <Check className="w-3 h-3" />,
-            label: "Approved",
-          };
+          return { color: "bg-emerald-500/15 text-emerald-300 border-emerald-400/40", icon: <Check className="h-3 w-3" />, label: "Approved" };
         case "FAILED":
-          return {
-            color: "bg-rose-500/20 text-rose-400 border-rose-500/30",
-            icon: <X className="w-3 h-3" />,
-            label: "Failed",
-          };
+          return { color: "bg-rose-500/15 text-rose-300 border-rose-400/40", icon: <X className="h-3 w-3" />, label: "Failed" };
         default:
-          return {
-            color: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-            icon: null,
-            label: status,
-          };
+          return { color: "bg-slate-500/15 text-slate-300 border-slate-400/40", icon: null, label: status };
       }
-    } else {
-      // Payment status
-      switch (status) {
-        case "DRAFT":
-        case "DRAFT_LOCKED":
-          return {
-            color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-            icon: <Clock className="w-3 h-3" />,
-            label: status === "DRAFT_LOCKED" ? "Draft (Locked)" : "Draft",
-          };
-        case "SENT":
-          return {
-            color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-            icon: <Send className="w-3 h-3" />,
-            label: "Sent",
-          };
-        case "PAID":
-          return {
-            color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-            icon: <DollarSign className="w-3 h-3" />,
-            label: "Paid",
-          };
-        case "CANCELLED":
-          return {
-            color: "bg-rose-500/20 text-rose-400 border-rose-500/30",
-            icon: <X className="w-3 h-3" />,
-            label: "Cancelled",
-          };
-        default:
-          return {
-            color: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-            icon: null,
-            label: status,
-          };
-      }
+    }
+    switch (status) {
+      case "DRAFT":
+      case "DRAFT_LOCKED":
+        return { color: "bg-amber-500/15 text-amber-300 border-amber-400/40", icon: <Clock className="h-3 w-3" />, label: status === "DRAFT_LOCKED" ? "Locked" : "Draft" };
+      case "SENT":
+        return { color: "bg-cyan-500/15 text-cyan-300 border-cyan-400/40", icon: <Send className="h-3 w-3" />, label: "Sent" };
+      case "PAID":
+        return { color: "bg-emerald-500/15 text-emerald-300 border-emerald-400/40", icon: <DollarSign className="h-3 w-3" />, label: "Paid" };
+      case "CANCELLED":
+        return { color: "bg-rose-500/15 text-rose-300 border-rose-400/40", icon: <X className="h-3 w-3" />, label: "Cancelled" };
+      default:
+        return { color: "bg-slate-500/15 text-slate-300 border-slate-400/40", icon: null, label: status };
     }
   };
 
-  const config = getStatusConfig();
+  const cfg = getConfig();
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
-    >
-      {config.icon}
-      {config.label}
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${cfg.color}`}>
+      {cfg.icon}
+      {cfg.label}
     </span>
   );
 }
