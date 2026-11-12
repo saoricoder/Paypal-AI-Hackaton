@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ============================================================
    Deal2Pay AI — Fintech Dark Theme
@@ -11,6 +9,18 @@ body {
   color: #F8FAFC;
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+}
+
+textarea,
+input {
+  background-color: #0A0D16 !important;
+  color: #F8FAFC !important;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: #64748B;
+  opacity: 1;
 }
 
 /* AG Grid Dark Theme */

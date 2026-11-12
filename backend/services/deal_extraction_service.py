@@ -6,13 +6,11 @@ from free-form natural language (text or voice transcript).
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import Optional
 
 import google.generativeai as genai
 
-from schemas import DealCreateRequest, LineItem, RuleType, ValidationRule
+from schemas import DealCreateRequest, RuleType, ValidationRule
 
 logger = logging.getLogger(__name__)
 
@@ -74,24 +72,37 @@ class DealExtractionService:
         logger.info("Extracting deal from text (%d chars)...", len(raw_text))
 
         try:
-            # Configure structured output with JSON schema
+            # Ask for JSON without passing Pydantic's nested schema. Pydantic v2
+            # emits $defs for nested models, which the legacy Gemini SDK rejects.
             generation_config = genai.GenerationConfig(
                 response_mime_type="application/json",
-                response_schema=DealCreateRequest.model_json_schema(),
                 temperature=0.1,  # Low temperature for deterministic extraction
             )
 
             response = await self.client.generate_content_async(
-                f"Extract the deal terms from the following description:\n\n---\n{raw_text}\n---\n\nReturn a complete, valid DealCreateRequest JSON object.",
+                f"""Extract the deal terms from this description and return only one JSON object.
+Use exactly this structure:
+{{
+  "raw_text": "the original description",
+  "client_email": "valid email address",
+  "client_name": "client or company name",
+  "line_items": [{{"description": "work item", "quantity": 1.0, "unit_price": 100.0}}],
+  "total_amount": 100.0,
+  "validation_rules": [{{"label": "Client Signature", "rule_type": "signature", "required": true}}]
+}}
+Each line item must include description, quantity, and unit_price. Each validation rule
+must include label, rule_type (one of "checkbox", "signature", "date"), and required.
+Use an empty array when there are no explicit validation rules. Return valid JSON only.
+
+Deal description:
+---
+{raw_text}
+---""",
                 generation_config=generation_config,
             )
 
-            # Parse the JSON response
-            response_text = response.text
-            response_data = json.loads(response_text)
-
-            # Create DealCreateRequest from parsed data
-            deal = DealCreateRequest(**response_data)
+            # Parse and validate the response with the application model.
+            deal = DealCreateRequest.model_validate_json(response.text)
             deal.raw_text = raw_text  # Preserve original text
 
             logger.info(
@@ -104,9 +115,6 @@ class DealExtractionService:
 
             return deal
 
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse Gemini JSON response: %s", e)
-            raise Exception(f"Invalid JSON response from Gemini: {e}") from e
         except Exception as e:
             logger.error("Gemini extraction failed: %s", e)
             raise Exception(f"Failed to extract deal: {e}") from e

@@ -19,6 +19,7 @@
     "swr": "^2.5.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
