@@ -1,5 +1,5 @@
 /**
- * Main page for Deal2Pay AI — Neon cyber aesthetic
+ * Main page for Deal2Pay AI — Modern fintech dark canvas
  */
 
 "use client";
@@ -55,37 +55,38 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen text-cyan-50">
-      {/* Hero Header — Neon */}
-      <header className="sticky top-0 z-40 border-b border-cyan-500/20 bg-[#020617]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <main className="min-h-screen bg-[#090C15] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,112,186,0.15),rgba(255,255,255,0))] text-slate-100 antialiased p-6 md:p-10 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(0,212,255,0.5)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 shadow-lg shadow-blue-500/20">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="bg-gradient-to-r from-cyan-300 via-sky-200 to-blue-400 bg-clip-text text-2xl font-black tracking-tight text-transparent">
+              <h1 className="bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-300 bg-clip-text text-3xl font-black tracking-tight text-transparent">
                 Deal2Pay AI
               </h1>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300/70">
-                Autonomous Deal-to-Invoice Agent
+              <p className="text-xs font-medium tracking-wider uppercase text-slate-400">
+                Autonomous Deal-to-Invoice Agent & Physical Delivery Audit
               </p>
             </div>
           </div>
-          <div className="rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-1.5 text-xs font-semibold text-cyan-300 shadow-[0_0_15px_rgba(0,212,255,0.3)]">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-500/10 text-sky-300 border border-blue-500/30 shadow-[0_0_15px_rgba(0,112,186,0.3)]">
             PayPal AI Hackathon 2026
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main */}
-      <main className="mx-auto max-w-7xl px-6 py-10">
+        {/* Deal Input Card */}
         <DealInputPanel onCreateDeal={handleCreateDeal} />
+
+        {/* Deals Dashboard Grid */}
         <DealTable deals={deals} onRunAudit={handleRunAudit} onSendInvoice={handleSendInvoice} />
+
         {isLoading && (
-          <p className="mt-3 text-center text-xs text-cyan-400/70">Syncing live data…</p>
+          <p className="text-center text-xs text-slate-500">Refreshing deals…</p>
         )}
-      </main>
+      </div>
 
       {selectedDeal && (
         <AuditModal
@@ -98,6 +99,6 @@ export default function Home() {
           onAuditComplete={handleAuditComplete}
         />
       )}
-    </div>
+    </main>
   );
 }
