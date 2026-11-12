@@ -36,7 +36,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from PIL import Image, ImageDraw
 
-from database import check_db_connectivity, get_db_connection
+from database import check_db_connectivity, get_db_connection, initialize_database
 from schemas import (
     AuditResponse,
     AuditStatus,
@@ -133,7 +133,11 @@ async def lifespan(app: FastAPI):
 
     _audit_service = AuditService()
 
-    # Verify database connectivity and schema
+    # Create missing tables before serving any API requests, then verify access.
+    schema_ok = initialize_database()
+    if not schema_ok:
+        logger.warning("Database schema initialization failed; database-backed routes may return errors.")
+
     db_ok = check_db_connectivity()
     if db_ok:
         logger.info("PostgreSQL (Render) connection verified successfully.")
@@ -161,11 +165,16 @@ app = FastAPI(
 )
 
 # CORS — allow frontend origin(s)
-origins = [o.strip() for o in os.getenv("FRONTEND_ORIGIN", "http://localhost:3000").split(",")]
+configured_origins = [o.strip() for o in os.getenv("FRONTEND_ORIGIN", "").split(",") if o.strip()]
+origins = list(dict.fromkeys([
+    "https://deal2pay-frontend.onrender.com",
+    "http://localhost:3000",
+    *configured_origins,
+]))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

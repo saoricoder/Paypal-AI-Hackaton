@@ -49,6 +49,9 @@ def get_db_connection() -> psycopg2.extensions.connection:
             "Add it to backend/.env (see .env.example)."
         )
 
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
     try:
         conn = psycopg2.connect(
             database_url,
@@ -59,6 +62,58 @@ def get_db_connection() -> psycopg2.extensions.connection:
     except psycopg2.Error as exc:
         logger.error("Failed to connect to PostgreSQL: %s", exc)
         raise
+
+
+def initialize_database() -> bool:
+    """Create the application tables and indexes when they are missing."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS deals (
+        id UUID PRIMARY KEY,
+        raw_text TEXT NOT NULL,
+        client_email TEXT NOT NULL,
+        client_name TEXT NOT NULL,
+        line_items JSONB NOT NULL DEFAULT '[]'::JSONB,
+        total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+        validation_rules JSONB NOT NULL DEFAULT '[]'::JSONB,
+        paypal_invoice_id TEXT,
+        paypal_invoice_url TEXT,
+        audit_status TEXT NOT NULL DEFAULT 'PENDING'
+            CHECK (audit_status IN ('PENDING', 'IN_PROGRESS', 'APPROVED', 'FAILED')),
+        payment_status TEXT NOT NULL DEFAULT 'DRAFT'
+            CHECK (payment_status IN ('DRAFT', 'DRAFT_LOCKED', 'SENT', 'PAID', 'CANCELLED')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+        pdf_storage_path TEXT,
+        overall_pass BOOLEAN NOT NULL DEFAULT FALSE,
+        bounding_boxes JSONB NOT NULL DEFAULT '[]'::JSONB,
+        reasoning_log JSONB NOT NULL DEFAULT '[]'::JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_deals_payment_status ON deals(payment_status);
+    CREATE INDEX IF NOT EXISTS idx_deals_audit_status ON deals(audit_status);
+    CREATE INDEX IF NOT EXISTS idx_deals_paypal_invoice ON deals(paypal_invoice_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_deal_id ON audit_logs(deal_id);
+    """
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(ddl)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        logger.info("Database schema initialized (deals, audit_logs).")
+        return True
+    except (RuntimeError, psycopg2.Error) as exc:
+        logger.error("Could not initialize database schema: %s", exc)
+        return False
 
 
 def check_db_connectivity() -> bool:
