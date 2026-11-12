@@ -12,7 +12,9 @@ interface PayPalInvoicePanelProps {
 }
 
 export function PayPalInvoicePanel({ deal, onSendInvoice }: PayPalInvoicePanelProps) {
-  const canSend = deal.audit_status === "APPROVED" && deal.payment_status !== "PAID";
+  const isApproved = deal.audit_status?.toUpperCase() === "APPROVED";
+  const isPaid = deal.payment_status?.toUpperCase() === "PAID";
+  const canSend = isApproved && !isPaid && Boolean(deal.paypal_invoice_id);
 
   return (
     <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
@@ -40,33 +42,29 @@ export function PayPalInvoicePanel({ deal, onSendInvoice }: PayPalInvoicePanelPr
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Status</span>
-          <span className="text-gray-200">{deal.payment_status}</span>
+          <span className={isPaid ? "text-emerald-300" : "text-gray-200"}>{deal.payment_status}</span>
         </div>
       </div>
 
       <div className="space-y-2">
-        <button
-          onClick={() => onSendInvoice(deal.paypal_invoice_id!)}
-          disabled={!canSend}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            canSend
-              ? "bg-blue-600 hover:bg-blue-700 text-white"
-              : "bg-gray-800 text-gray-500 cursor-not-allowed"
-          }`}
-          title={!canSend ? "Audit must be APPROVED before sending" : "Send invoice to client"}
-        >
-          {canSend ? (
-            <>
-              <Send className="w-4 h-4" />
-              Send Invoice
-            </>
-          ) : (
-            <>
-              <Lock className="w-4 h-4" />
-              Locked Pending Audit
-            </>
-          )}
-        </button>
+        {isPaid ? (
+          <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-center text-sm font-semibold text-emerald-300" role="status">
+            ✓ Invoice Settled via PayPal Webhook
+          </div>
+        ) : (
+          <button
+            onClick={() => onSendInvoice(deal.paypal_invoice_id!)}
+            disabled={!canSend}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              canSend
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-800 text-gray-500 cursor-not-allowed"
+            }`}
+            title={!canSend ? "Audit must be APPROVED before sending" : "Send invoice to client"}
+          >
+            {canSend ? <><Send className="w-4 h-4" />Pay / Send PayPal Invoice</> : <><Lock className="w-4 h-4" />Locked Pending Audit</>}
+          </button>
+        )}
 
         {deal.paypal_invoice_url && (
           <a

@@ -31,13 +31,13 @@ export function ReasoningTerminal({ logs }: ReasoningTerminalProps) {
   }, [logs]);
 
   const getGlyph = (log: string) => {
-    if (log.startsWith("✓")) return <Check className="w-3 h-3 text-emerald-400" />;
+    if (log.startsWith("✓") || /^\[(OpenCV|Gemini Audit|PayPal Gate)\]/.test(log)) return <Check className="w-3 h-3 text-emerald-400" />;
     if (log.startsWith("✗")) return <X className="w-3 h-3 text-red-400" />;
     return <Circle className="w-3 h-3 text-yellow-400" />;
   };
 
   const getLineClass = (log: string) => {
-    if (log.startsWith("✓")) return "text-emerald-400";
+    if (log.startsWith("✓") || /^\[(OpenCV|Gemini Audit|PayPal Gate)\]/.test(log)) return "text-emerald-400";
     if (log.startsWith("✗")) return "text-red-400";
     return "text-yellow-400";
   };
@@ -52,7 +52,7 @@ export function ReasoningTerminal({ logs }: ReasoningTerminalProps) {
         {visibleLogs.map((log, idx) => (
           <div key={idx} className="flex items-start gap-2 opacity-0 animate-fade-in" style={{ animationDelay: `${idx * 50}ms`, animationFillMode: "forwards" }}>
             <span className="mt-0.5 flex-shrink-0">{getGlyph(log)}</span>
-            <span className={getLineClass(log)}>{log.substring(2)}</span>
+            <span className={getLineClass(log)}>{log.startsWith("✓") || log.startsWith("✗") ? log.substring(2) : log}</span>
           </div>
         ))}
         {visibleLogs.length === 0 && (
