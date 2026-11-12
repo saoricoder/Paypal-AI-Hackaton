@@ -91,8 +91,8 @@ def get_audit() -> AuditService:
 
 
 def require_demo_routes() -> None:
-    """Keep sample audit and simulated settlement disabled outside explicit demos."""
-    if os.getenv("DEAL2PAY_ENABLE_DEMO_ENDPOINTS", "false").lower() not in {"1", "true", "yes"}:
+    """Allow the one-click demo flow by default; deployments can still disable it explicitly."""
+    if os.getenv("DEAL2PAY_ENABLE_DEMO_ENDPOINTS", "true").lower() not in {"1", "true", "yes"}:
         raise HTTPException(status_code=404, detail="Demo endpoints are disabled.")
 
 
