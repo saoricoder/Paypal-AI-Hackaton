@@ -1,5 +1,5 @@
 /**
- * DealTable — Neon AG Grid dashboard
+ * DealTable — Deals Ledger with AG Grid
  */
 
 "use client";
@@ -41,7 +41,7 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
         if (!data) return null;
         return (
           <div className="flex items-center gap-1.5">
-            <button onClick={() => onRunAudit(data.id)} className="rounded-lg bg-cyan-500/15 p-1.5 text-cyan-300 hover:bg-cyan-500/25" title="Run Audit">
+            <button onClick={() => onRunAudit(data.id)} className="rounded-lg bg-sky-500/15 p-1.5 text-sky-300 hover:bg-sky-500/25" title="Run Audit">
               <FileText className="h-4 w-4" />
             </button>
             {data.audit_status === "APPROVED" && data.payment_status !== "PAID" && (
@@ -69,25 +69,30 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-cyan-100">Deals Dashboard</h2>
-        <span className="flex items-center gap-2 text-xs text-cyan-400">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" /> Live
-        </span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold tracking-tight text-white">Deals Ledger</h2>
+          <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Real-Time</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          PayPal Webhook Active
+        </div>
       </div>
 
-      <div className="ag-theme-alpine-dark glow-border w-full overflow-hidden" style={{ height: "540px" }}>
+      <div className="ag-theme-alpine-dark w-full rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl" style={{ height: 500 }}>
         <AgGridReact
           ref={gridRef}
           rowData={deals}
           columnDefs={columnDefs}
-          getRowId={(p) => String(p.data.id)}
-          animateRows
-          pagination
+          getRowId={(params) => String(params.data.id)}
+          animateRows={true}
+          pagination={true}
           paginationPageSize={10}
+          paginationPageSizeSelector={[10, 20, 50, 100]}
           defaultColDef={{ flex: 1, minWidth: 110, resizable: true, sortable: true, filter: true }}
           theme="legacy"
-          overlayNoRowsTemplate={`<div style="padding:48px;text-align:center;color:#67e8f9"><div style="font-size:36px;margin-bottom:8px">📄</div>No deals yet. Create your first one above.</div>`}
+          overlayNoRowsTemplate={`<div style="padding:48px;text-align:center;color:#94a3b8"><div style="font-size:36px;margin-bottom:8px">📄</div>No deals yet. Create your first one above.</div>`}
         />
       </div>
     </section>
