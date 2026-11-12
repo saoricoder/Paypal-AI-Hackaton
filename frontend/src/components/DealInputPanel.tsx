@@ -1,5 +1,5 @@
 /**
- * DealInputPanel — Neon cyber input with voice + examples
+ * DealInputPanel — Elevated glassmorphic prompt workspace
  */
 
 "use client";
@@ -13,9 +13,18 @@ interface DealInputPanelProps {
 }
 
 const EXAMPLE_DEALS = [
-  "Web security audit for client@acme.com — 2 hours at $75/hr plus a $50 compliance review. Total $200. Requires a signed statement of work with 2 checkboxes.",
-  "Penetration testing engagement for security@globex.com — 1 day at $1,200. Total $1,200. Needs signed contract and delivery report with signature and date fields.",
-  "SOC 2 readiness consultation for dev@initech.com — 3 hours at $150/hr. Total $450. Requires signed NDA and checklist with 3 required items.",
+  {
+    label: "Example 1",
+    text: "Web security audit for client@acme.com — 2 hours at $75/hr plus a $50 compliance review. Total $200. Requires a signed statement of work with 2 checkboxes.",
+  },
+  {
+    label: "Example 2",
+    text: "Penetration testing engagement for security@globex.com — 1 day at $1,200. Total $1,200. Needs signed contract and delivery report with signature and date fields.",
+  },
+  {
+    label: "Example 3",
+    text: "SOC 2 readiness consultation for dev@initech.com — 3 hours at $150/hr. Total $450. Requires signed NDA and checklist with 3 required items.",
+  },
 ];
 
 export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
@@ -64,57 +73,58 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
   };
 
   return (
-    <div className="mb-10 rounded-2xl border border-cyan-500/30 bg-[#0a1224]/80 p-6 shadow-[0_0_30px_rgba(0,212,255,0.12)] backdrop-blur-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-cyan-400" />
-        <h2 className="text-lg font-bold tracking-tight text-cyan-100">Describe Your Deal</h2>
+    <div className="relative rounded-2xl border border-slate-800 bg-gradient-to-b from-[#131927] to-[#0E131F] p-6 shadow-2xl overflow-hidden">
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-sky-400" />
+        <h2 className="text-lg font-bold text-slate-100">Describe Your Deal</h2>
       </div>
 
       <textarea
         value={rawText}
         onChange={(e) => setRawText(e.target.value)}
-        placeholder="Type or speak a deal... e.g. 'Web audit for client@acme.com, 2hrs at $50 + $50 security. Needs signed work order with 2 checkboxes.'"
-        className="h-28 w-full resize-none rounded-xl border border-cyan-500/30 bg-[#020617]/70 p-4 text-sm text-cyan-50 placeholder:text-cyan-700/60 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+        placeholder="Type or speak your deal description… e.g., 'Web audit for client@acme.com, 2hrs at $50, plus $50 security review. Total $150. Needs signed work order with 2 checkboxes.'"
+        className="w-full h-28 bg-[#0A0D16] border border-slate-700/70 rounded-xl p-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-all resize-none shadow-inner"
       />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-2">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
+            type="button"
             onClick={startRecording}
             disabled={isRecording}
-            className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-medium transition ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
               isRecording
-                ? "animate-pulse border-red-400 bg-red-500/20 text-red-300"
-                : "border-cyan-500/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                ? "bg-red-500/20 text-red-300 border-red-500/50 animate-pulse"
+                : "bg-slate-800/90 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-slate-600 shadow-sm"
             }`}
           >
-            <Mic className="h-4 w-4" />
-            {isRecording ? "Listening…" : "Speak"}
+            <Mic className="w-4 h-4" />
+            {isRecording ? "Listening..." : "Voice Dictate"}
           </button>
 
-          <span className="text-xs text-cyan-400/70">Examples:</span>
-          {EXAMPLE_DEALS.map((ex, i) => (
-            <button
-              key={i}
-              onClick={() => setRawText(ex)}
-              className="rounded-full border border-cyan-500/30 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/15"
-            >
-              {i + 1}
-            </button>
-          ))}
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 ml-1">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mr-1">Examples:</span>
+            {EXAMPLE_DEALS.map((ex, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setRawText(ex.text)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-sky-950/60 hover:text-sky-300 hover:border-sky-700/60 text-slate-300 border border-slate-700/50 text-xs transition"
+              >
+                {ex.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button
+          type="button"
           onClick={handleCreateDeal}
-          disabled={!rawText.trim() || isProcessing}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_20px_rgba(0,212,255,0.4)] transition hover:brightness-110 disabled:opacity-50"
+          disabled={isProcessing || !rawText.trim()}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#0070BA] to-[#003087] hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(0,112,186,0.35)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isProcessing ? "Processing…" : (
-            <>
-              <Send className="h-4 w-4" />
-              Extract & Create Invoice
-            </>
-          )}
+          <Send className="w-4 h-4" />
+          {isProcessing ? "Parsing Deal..." : "Extract & Create Invoice"}
         </button>
       </div>
     </div>
