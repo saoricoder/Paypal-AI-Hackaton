@@ -36,7 +36,7 @@
 |-------|------------|
 | **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, AG Grid Community, react-pdf, SWR, Lucide React |
 | **Backend** | Python 3.11+, FastAPI, Uvicorn, Pydantic v2 |
-| **LLM** | Google Gemini AI (`gemini-1.5-flash`) — structured JSON output |
+| **LLM** | Google Gemini AI (`gemini-2.5-flash`, with `gemini-3.6-flash` fallback) — structured JSON output |
 | **Computer Vision** | OpenCV (`cv2`), `pdf2image`, Pillow, numpy |
 | **Database** | Supabase (PostgreSQL) |
 | **Storage** | Supabase Storage — `deal-documents` bucket for PDF uploads |
@@ -106,7 +106,8 @@ Both services are deployed on **Render** as independent Web Services from the sa
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` |
 | `PAYPAL_WEBHOOK_ID` | Webhook ID from PayPal Developer Dashboard |
 | `GEMINI_API_KEY` | Google AI Studio API key |
-| `GEMINI_MODEL` | `gemini-1.5-flash` |
+| `GEMINI_MODEL` | `gemini-2.5-flash` |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.6-flash` |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
 | `FRONTEND_ORIGIN` | Deployed frontend URL (for CORS) |

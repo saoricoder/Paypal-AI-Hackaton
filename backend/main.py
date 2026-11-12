@@ -126,9 +126,15 @@ async def lifespan(app: FastAPI):
         webhook_id=os.getenv("PAYPAL_WEBHOOK_ID", ""),
     )
 
+    configured_gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    if configured_gemini_model.endswith("1.5-flash"):
+        logger.warning("Ignoring retired Gemini model setting; using gemini-2.5-flash.")
+        configured_gemini_model = "gemini-2.5-flash"
+
     _extraction_service = DealExtractionService(
         api_key=os.getenv("GEMINI_API_KEY", ""),
-        model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+        model=configured_gemini_model,
+        fallback_model=os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash"),
     )
 
     _audit_service = AuditService()

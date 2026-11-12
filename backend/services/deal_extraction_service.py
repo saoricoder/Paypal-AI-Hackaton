@@ -1,6 +1,6 @@
 """
 services/deal_extraction_service.py — Deal2Pay AI
-Uses Google Gemini AI (gemini-1.5-flash) to extract structured deal data
+Uses Google Gemini AI to extract structured deal data
 from free-form natural language (text or voice transcript).
 """
 
@@ -45,8 +45,14 @@ class DealExtractionService:
     with type-safe JSON output matching our Pydantic schema.
     """
 
-    def __init__(self, api_key: str, model: str = "gemini-1.5-flash") -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gemini-2.5-flash",
+        fallback_model: str = "gemini-3.6-flash",
+    ) -> None:
         self.model = model
+        self.fallback_model = fallback_model
         genai.configure(api_key=api_key)
         self.client = genai.GenerativeModel(
             model_name=self.model,
@@ -79,8 +85,7 @@ class DealExtractionService:
                 temperature=0.1,  # Low temperature for deterministic extraction
             )
 
-            response = await self.client.generate_content_async(
-                f"""Extract the deal terms from this description and return only one JSON object.
+            prompt = f"""Extract the deal terms from this description and return only one JSON object.
 Use exactly this structure:
 {{
   "raw_text": "the original description",
@@ -97,9 +102,37 @@ Use an empty array when there are no explicit validation rules. Return valid JSO
 Deal description:
 ---
 {raw_text}
----""",
-                generation_config=generation_config,
-            )
+---"""
+            response = None
+            models_to_try = [self.model]
+            if self.fallback_model and self.fallback_model != self.model:
+                models_to_try.append(self.fallback_model)
+
+            for index, model_name in enumerate(models_to_try):
+                model_client = self.client if model_name == self.model else genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=_SYSTEM_INSTRUCTION,
+                )
+                try:
+                    response = await model_client.generate_content_async(
+                        prompt,
+                        generation_config=generation_config,
+                    )
+                    if index:
+                        logger.info("Gemini extraction succeeded using fallback model %s", model_name)
+                    break
+                except Exception as exc:
+                    if index == len(models_to_try) - 1 or not _is_model_not_found_error(exc):
+                        raise
+                    logger.warning(
+                        "Gemini model %s is unavailable; retrying with fallback model %s: %s",
+                        model_name,
+                        models_to_try[index + 1],
+                        exc,
+                    )
+
+            if response is None:
+                raise RuntimeError("Gemini returned no response from the configured models.")
 
             # Parse and validate the response with the application model.
             deal = DealCreateRequest.model_validate_json(response.text)
@@ -151,3 +184,17 @@ Deal description:
             ]
 
         return deal
+
+
+def _is_model_not_found_error(error: Exception) -> bool:
+    """Return true only for API errors that indicate the requested model is absent."""
+    code = getattr(error, "code", None)
+    if callable(code):
+        try:
+            code = code()
+        except Exception:
+            code = None
+    if code == 404 or str(code) == "404":
+        return True
+    message = str(error).lower()
+    return "model_not_found" in message or ("404" in message and "model" in message and "not found" in message)
