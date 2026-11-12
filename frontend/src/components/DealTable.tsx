@@ -138,9 +138,16 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
   }, [deals, columnDefs]);
 
   return (
+    <section>
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-xl font-bold tracking-tight text-white">Deals Dashboard</h2>
+      <span className="flex items-center gap-2 text-xs text-slate-400">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Live Sync Enabled
+      </span>
+    </div>
     <div
-      className="ag-theme-alpine-dark w-full rounded-xl overflow-hidden shadow-2xl border border-slate-700/60"
-      style={{ height: "520px", width: "100%" }}
+      className="ag-theme-alpine-dark w-full overflow-hidden rounded-2xl border border-slate-800 bg-[#0F172A] shadow-2xl"
+      style={{ height: "520px" }}
     >
       <AgGridReact
         ref={gridRef}
@@ -165,5 +172,6 @@ export function DealTable({ deals, onRunAudit, onSendInvoice }: DealTableProps) 
         paginationPageSizeSelector={[10, 20, 50, 100]}
       />
     </div>
+    </section>
   );
 }

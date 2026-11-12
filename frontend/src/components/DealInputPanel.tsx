@@ -89,56 +89,54 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
   };
 
   return (
-    <div className="bg-[#151D2C] border border-slate-700/80 rounded-xl p-6 mb-6 shadow-xl">
+    <div className="mb-8 space-y-4 rounded-2xl border border-slate-700/60 bg-[#131B2E] p-6 shadow-2xl">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-5 h-5 text-blue-400" />
-        <h2 className="text-lg font-semibold text-white tracking-tight">
+        <h2 className="text-lg font-bold text-white tracking-tight">
           Describe Your Deal
         </h2>
       </div>
 
       <div className="space-y-4">
-        <div className="relative">
           <textarea
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Type or speak your deal description... e.g., 'Web audit for client@acme.com, 2hrs at $50, plus $50 security review. Total $150. Needs signed work order with 2 checkboxes.'"
-            className="w-full h-32 bg-[#0B0F17] text-slate-100 border border-slate-700 rounded-lg p-4 text-sm leading-relaxed placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="h-28 w-full resize-none rounded-xl border border-slate-700 bg-[#0B0F19] p-4 text-sm leading-relaxed text-slate-100 shadow-inner transition-all placeholder:text-slate-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500/60"
           />
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
           <button
             onClick={startRecording}
             disabled={isRecording}
-            className={`absolute bottom-3 right-3 p-2.5 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-medium shadow-sm transition ${
               isRecording
-                ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
-                : "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600"
+                ? "animate-pulse border-red-500/40 bg-red-500/20 text-red-300"
+                : "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
             }`}
             title="Start voice input"
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="h-4 w-4" /> {isRecording ? "Listening…" : "Speak deal"}
           </button>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <span className="text-xs text-slate-500 self-center">Try an example:</span>
+          <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-400">Try an example:</span>
           {EXAMPLE_DEALS.map((example, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setRawText(example)}
               title={example}
-              className="text-xs px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+              className="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-blue-900/40 hover:text-blue-300"
             >
               Example {i + 1}
             </button>
           ))}
+          </div>
         </div>
-
-        <div className="flex justify-end">
           <button
             onClick={handleCreateDeal}
             disabled={!rawText.trim() || isProcessing}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-white font-semibold rounded-lg text-sm shadow-md transition-all"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0070BA] to-[#003087] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isProcessing ? (
               "Processing..."

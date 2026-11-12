@@ -7,14 +7,16 @@
    ============================================================ */
 
 .ag-theme-alpine-dark {
-  --ag-background-color: #0b0f17;
-  --ag-foreground-color: #f1f5f9;
-  --ag-border-color: rgba(51, 65, 85, 0.6);
+  --ag-background-color: #0F172A !important;
+  --ag-header-background-color: #1E293B !important;
+  --ag-header-foreground-color: #E2E8F0 !important;
+  --ag-border-color: #334155 !important;
+  --ag-row-hover-color: #1E293B !important;
+  --ag-foreground-color: #F8FAFC !important;
+  --ag-data-color: #F8FAFC !important;
   --ag-cell-horizontal-border: rgba(51, 65, 85, 0.4);
-  --ag-row-hover-color: #151d2c;
-  --ag-header-background-color: #151d2c;
-  --ag-odd-row-background-color: #0d1117;
-  --ag-card-border-color: rgba(51, 65, 85, 0.6);
+  --ag-odd-row-background-color: #111B2E;
+  --ag-card-border-color: #334155;
   --ag-range-selection-background-color: rgba(56, 189, 248, 0.2);
   --ag-range-selection-border-color: #38bdf8;
 }
@@ -52,5 +54,7 @@
    ============================================================ */
 
 body {
+  background-color: #0B0F19;
+  color: #F8FAFC;
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
