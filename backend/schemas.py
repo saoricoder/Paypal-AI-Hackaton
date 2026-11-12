@@ -101,6 +101,7 @@ class DealCreateResponse(BaseModel):
     deal_id:           UUID
     paypal_invoice_id: str
     paypal_invoice_url: str | None = None
+    paypal_invoice_is_fallback: bool = False
     payment_status:    PaymentStatus = PaymentStatus.DRAFT_LOCKED
     message:           str = "Deal created and PayPal DRAFT invoice generated. Locked pending audit."
 

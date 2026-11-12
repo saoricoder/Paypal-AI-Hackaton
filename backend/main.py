@@ -282,7 +282,7 @@ async def create_deal(body: CreateDealBody):
 
     # Step 2 — Create PayPal DRAFT invoice
     try:
-        invoice_id, invoice_url = await paypal.create_draft_invoice(deal)
+        invoice_id, invoice_url, invoice_is_fallback = await paypal.create_draft_invoice(deal)
     except PayPalServiceError as exc:
         raise HTTPException(
             status_code=502,
@@ -340,6 +340,12 @@ async def create_deal(body: CreateDealBody):
         paypal_invoice_id=invoice_id,
         paypal_invoice_url=invoice_url,
         payment_status=PaymentStatus.DRAFT_LOCKED,
+        paypal_invoice_is_fallback=invoice_is_fallback,
+        message=(
+            "Deal saved with a synthetic demo invoice ID; PayPal did not create an invoice."
+            if invoice_is_fallback
+            else "Deal created and PayPal DRAFT invoice generated. Locked pending audit."
+        ),
     )
 
 

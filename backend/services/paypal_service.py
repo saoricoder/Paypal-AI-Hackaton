@@ -118,12 +118,12 @@ class PayPalService:
             },
         }
 
-    async def create_draft_invoice(self, deal: DealCreateRequest) -> tuple[str, str | None]:
+    async def create_draft_invoice(self, deal: DealCreateRequest) -> tuple[str, str | None, bool]:
         """
         Create a DRAFT invoice in PayPal Sandbox.
 
         Returns:
-            Tuple of (invoice_id, invoice_detail_url)
+            Tuple of (invoice_id, invoice_detail_url, is_synthetic_fallback)
         """
         payload: dict[str, Any] = {
             "detail": {
@@ -166,6 +166,30 @@ class PayPalService:
                 )
 
             if response.status_code not in (200, 201):
+                # Some Sandbox business accounts (including EC accounts) do not
+                # have Invoicing API access. Preserve the deal for the demo, but
+                # clearly identify the generated ID as synthetic to callers.
+                try:
+                    error_data = response.json()
+                except ValueError:
+                    error_data = {}
+                is_not_authorized = (
+                    error_data.get("name") == "NOT_AUTHORIZED"
+                    or any(
+                        item.get("issue") == "NOT_AUTHORIZED"
+                        for item in error_data.get("details", [])
+                        if isinstance(item, dict)
+                    )
+                )
+                if response.status_code == 403 and is_not_authorized:
+                    invoice_id = self._generate_demo_invoice_id()
+                    logger.warning(
+                        "PayPal Invoicing API denied authorization (debug_id=%s); "
+                        "persisting deal with synthetic demo invoice ID %s.",
+                        error_data.get("debug_id", "unavailable"),
+                        invoice_id,
+                    )
+                    return invoice_id, None, True
                 raise PayPalServiceError(
                     f"Failed to create PayPal invoice: {response.text}",
                     status_code=response.status_code,
@@ -184,7 +208,7 @@ class PayPalService:
                     break
 
             logger.info("PayPal DRAFT invoice created: %s", invoice_id)
-            return invoice_id, invoice_url
+            return invoice_id, invoice_url, False
         except (PayPalServiceError, httpx.HTTPError, ValueError) as exc:
             if not self._demo_fallback_enabled:
                 raise
@@ -194,7 +218,7 @@ class PayPalService:
                 invoice_id,
                 exc,
             )
-            return invoice_id, None
+            return invoice_id, None, True
 
     # ----------------------------------------------------------
     # Invoice Send (Autonomous Release)

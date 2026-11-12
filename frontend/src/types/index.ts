@@ -60,6 +60,7 @@ export interface DealCreateResponse {
   deal_id: string;
   paypal_invoice_id: string;
   paypal_invoice_url: string | null;
+  paypal_invoice_is_fallback?: boolean;
   payment_status: PaymentStatus;
   message: string;
 }

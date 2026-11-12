@@ -109,7 +109,9 @@ export function DealInputPanel({ onCreateDeal, onRefreshLedger }: DealInputPanel
     try {
       setStep(0, "running", "Extracting the deal with Gemini and creating a PayPal Sandbox draft…");
       const deal: DealCreateResponse = await onCreateDeal({ raw_text: scenario });
-      setStep(0, "completed", `Draft invoice ${deal.paypal_invoice_id} created`);
+      setStep(0, "completed", deal.paypal_invoice_is_fallback
+        ? `Demo deal saved; PayPal denied invoice access. Synthetic ID: ${deal.paypal_invoice_id}`
+        : `Draft invoice ${deal.paypal_invoice_id} created`);
       await onRefreshLedger();
 
       setStep(1, "running", "Running the sample document through the OpenCV audit…");
