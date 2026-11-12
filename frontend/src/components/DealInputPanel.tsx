@@ -1,13 +1,12 @@
 /**
- * DealInputPanel — Text input panel with Web Speech API voice input.
- * Allows users to type or speak deal descriptions and preview extracted data.
+ * DealInputPanel — Neon cyber input with voice + examples
  */
 
 "use client";
 
 import { useState } from "react";
 import { Mic, Sparkles, Send } from "lucide-react";
-import { DealCreateRequest, CreateDealPayload } from "@/types";
+import { CreateDealPayload } from "@/types";
 
 interface DealInputPanelProps {
   onCreateDeal: (deal: CreateDealPayload) => Promise<void>;
@@ -23,7 +22,6 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
   const [rawText, setRawText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedDeal, setExtractedDeal] = useState<DealCreateRequest | null>(null);
 
   const startRecording = () => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
@@ -38,116 +36,86 @@ export function DealInputPanel({ onCreateDeal }: DealInputPanelProps) {
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => {
-      setIsRecording(true);
-    };
-
+    recognition.onstart = () => setIsRecording(true);
     recognition.onresult = (event: any) => {
-      let interimTranscript = "";
       let finalTranscript = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
+        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
       }
-
-      if (finalTranscript) {
-        setRawText((prev) => prev + (prev ? " " : "") + finalTranscript);
-      }
+      if (finalTranscript) setRawText((prev) => prev + (prev ? " " : "") + finalTranscript);
     };
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-
+    recognition.onerror = () => setIsRecording(false);
+    recognition.onend = () => setIsRecording(false);
     recognition.start();
   };
 
   const handleCreateDeal = async () => {
     if (!rawText.trim()) return;
-
     setIsProcessing(true);
     try {
       await onCreateDeal({ raw_text: rawText });
       setRawText("");
-      setExtractedDeal(null);
     } catch (error) {
-      console.error("Failed to create deal:", error);
-      alert("Failed to create deal. Please try again.");
+      console.error(error);
+      alert("Failed to create deal.");
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="mb-8 space-y-4 rounded-2xl border border-slate-700/60 bg-[#131B2E] p-6 shadow-2xl">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-blue-400" />
-        <h2 className="text-lg font-bold text-white tracking-tight">
-          Describe Your Deal
-        </h2>
+    <div className="mb-10 rounded-2xl border border-cyan-500/30 bg-[#0a1224]/80 p-6 shadow-[0_0_30px_rgba(0,212,255,0.12)] backdrop-blur-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-cyan-400" />
+        <h2 className="text-lg font-bold tracking-tight text-cyan-100">Describe Your Deal</h2>
       </div>
 
-      <div className="space-y-4">
-          <textarea
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder="Type or speak your deal description... e.g., 'Web audit for client@acme.com, 2hrs at $50, plus $50 security review. Total $150. Needs signed work order with 2 checkboxes.'"
-            className="h-28 w-full resize-none rounded-xl border border-slate-700 bg-[#0B0F19] p-4 text-sm leading-relaxed text-slate-100 shadow-inner transition-all placeholder:text-slate-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-          />
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
+      <textarea
+        value={rawText}
+        onChange={(e) => setRawText(e.target.value)}
+        placeholder="Type or speak a deal... e.g. 'Web audit for client@acme.com, 2hrs at $50 + $50 security. Needs signed work order with 2 checkboxes.'"
+        className="h-28 w-full resize-none rounded-xl border border-cyan-500/30 bg-[#020617]/70 p-4 text-sm text-cyan-50 placeholder:text-cyan-700/60 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+      />
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={startRecording}
             disabled={isRecording}
-            className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-medium shadow-sm transition ${
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-medium transition ${
               isRecording
-                ? "animate-pulse border-red-500/40 bg-red-500/20 text-red-300"
-                : "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                ? "animate-pulse border-red-400 bg-red-500/20 text-red-300"
+                : "border-cyan-500/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
             }`}
-            title="Start voice input"
           >
-            <Mic className="h-4 w-4" /> {isRecording ? "Listening…" : "Speak deal"}
+            <Mic className="h-4 w-4" />
+            {isRecording ? "Listening…" : "Speak"}
           </button>
-          <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400">Try an example:</span>
-          {EXAMPLE_DEALS.map((example, i) => (
+
+          <span className="text-xs text-cyan-400/70">Examples:</span>
+          {EXAMPLE_DEALS.map((ex, i) => (
             <button
               key={i}
-              type="button"
-              onClick={() => setRawText(example)}
-              title={example}
-              className="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-blue-900/40 hover:text-blue-300"
+              onClick={() => setRawText(ex)}
+              className="rounded-full border border-cyan-500/30 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/15"
             >
-              Example {i + 1}
+              {i + 1}
             </button>
           ))}
-          </div>
         </div>
-          <button
-            onClick={handleCreateDeal}
-            disabled={!rawText.trim() || isProcessing}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0070BA] to-[#003087] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isProcessing ? (
-              "Processing..."
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Extract & Create Invoice
-              </>
-            )}
-          </button>
-        </div>
+
+        <button
+          onClick={handleCreateDeal}
+          disabled={!rawText.trim() || isProcessing}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_20px_rgba(0,212,255,0.4)] transition hover:brightness-110 disabled:opacity-50"
+        >
+          {isProcessing ? "Processing…" : (
+            <>
+              <Send className="h-4 w-4" />
+              Extract & Create Invoice
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
