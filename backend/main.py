@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import io
 from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
@@ -33,6 +34,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from PIL import Image, ImageDraw
 
 from database import check_db_connectivity, get_db_connection
 from schemas import (
@@ -86,6 +88,12 @@ def get_audit() -> AuditService:
     if _audit_service is None:
         raise RuntimeError("AuditService not initialized.")
     return _audit_service
+
+
+def require_demo_routes() -> None:
+    """Keep sample audit and simulated settlement disabled outside explicit demos."""
+    if os.getenv("DEAL2PAY_ENABLE_DEMO_ENDPOINTS", "false").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(status_code=404, detail="Demo endpoints are disabled.")
 
 
 # ============================================================
@@ -455,6 +463,117 @@ def _update_audit_status(deal_id: str, new_status: AuditStatus) -> None:
             conn.close()
     except Exception as exc:
         logger.warning("Could not update audit_status for deal %s: %s", deal_id, exc)
+
+
+@app.post("/api/audit/verify-sample/{deal_id}", response_model=AuditResponse, tags=["Audit", "Demo"])
+async def verify_sample_document(deal_id: str):
+    """Generate a signed sample PDF in memory and run the real OpenCV audit on it.
+
+    This endpoint is available only when DEAL2PAY_ENABLE_DEMO_ENDPOINTS is enabled.
+    """
+    require_demo_routes()
+    try:
+        deal_uuid = UUID(deal_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid deal ID.")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT validation_rules FROM deals WHERE id = %s;", (str(deal_uuid),))
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Deal not found.")
+        raw_rules = row["validation_rules"] or []
+        if isinstance(raw_rules, str):
+            raw_rules = json.loads(raw_rules)
+        rules = [ValidationRule(**rule) for rule in raw_rules]
+    except psycopg2.Error as exc:
+        logger.exception("Could not load demo audit rules for %s", deal_id)
+        raise HTTPException(status_code=500, detail="Database error while preparing sample audit.") from exc
+    finally:
+        conn.close()
+
+    # Build a simple signed delivery form without a filesystem asset. The image is
+    # converted to PDF in memory, then passed through the same OpenCV analyzer used
+    # by uploaded documents.
+    image = Image.new("RGB", (1000, 1400), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((80, 70), "DEAL2PAY — DELIVERY ACCEPTANCE", fill="black")
+    draw.text((80, 130), "Sample signed delivery document", fill="black")
+    draw.text((80, 205), "Date: 2026-11-11", fill="black")
+    checkbox_index = 0
+    for rule in rules:
+        if rule.rule_type.value == "checkbox":
+            y = 300 + checkbox_index * 90
+            draw.rectangle((82, y, 100, y + 18), outline="black", width=3)
+            draw.line((85, y + 9, 90, y + 15, 98, y + 2), fill="black", width=3)
+            draw.text((125, y + 1), rule.label[:70], fill="black")
+            checkbox_index += 1
+    draw.text((80, 1080), "Authorized signature", fill="black")
+    signature_points = [(90, 1210), (140, 1165), (180, 1240), (235, 1150), (265, 1210), (320, 1170), (370, 1215), (430, 1160), (490, 1210), (545, 1175), (610, 1220), (680, 1160)]
+    draw.line(signature_points, fill="black", width=5, joint="curve")
+    sample_pdf = io.BytesIO()
+    image.save(sample_pdf, format="PDF", resolution=150)
+
+    audit_result = get_audit().analyze_document(
+        pdf_bytes=sample_pdf.getvalue(), validation_rules=rules, deal_id=str(deal_uuid)
+    )
+    new_status = AuditStatus.APPROVED if audit_result.overall_pass else AuditStatus.FAILED
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE deals SET audit_status = %s, updated_at = NOW() WHERE id = %s;", (new_status.value, str(deal_uuid)))
+            cur.execute(
+                "INSERT INTO audit_logs (deal_id, overall_pass, bounding_boxes, reasoning_log) VALUES (%s, %s, %s::jsonb, %s::jsonb);",
+                (str(deal_uuid), audit_result.overall_pass,
+                 json.dumps([box.model_dump() for box in audit_result.bounding_boxes]),
+                 json.dumps(audit_result.reasoning_log)),
+            )
+        conn.commit()
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.exception("Could not persist demo audit for %s", deal_id)
+        raise HTTPException(status_code=500, detail="Could not save sample audit result.") from exc
+    finally:
+        conn.close()
+    if not audit_result.overall_pass:
+        raise HTTPException(status_code=422, detail="The generated sample document did not pass OpenCV validation.")
+    return audit_result
+
+
+@app.post("/api/webhooks/simulate-payment/{deal_id}", tags=["Demo", "Webhooks"])
+async def simulate_payment_settlement(deal_id: str):
+    """Apply the internal payment transition for a demo; does not call PayPal."""
+    require_demo_routes()
+    try:
+        deal_uuid = str(UUID(deal_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid deal ID.")
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT audit_status, paypal_invoice_id FROM deals WHERE id = %s;", (deal_uuid,))
+            deal = cur.fetchone()
+            if not deal:
+                raise HTTPException(status_code=404, detail="Deal not found.")
+            if deal["audit_status"] != AuditStatus.APPROVED.value:
+                raise HTTPException(status_code=409, detail="Payment simulation requires an approved audit.")
+            if not deal["paypal_invoice_id"]:
+                raise HTTPException(status_code=409, detail="Deal has no PayPal invoice to settle.")
+            cur.execute(
+                "UPDATE deals SET payment_status = %s, updated_at = NOW() WHERE id = %s;",
+                (PaymentStatus.PAID.value, deal_uuid),
+            )
+        conn.commit()
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.exception("Could not simulate payment for %s", deal_uuid)
+        raise HTTPException(status_code=500, detail="Could not apply demo payment settlement.") from exc
+    finally:
+        conn.close()
+    logger.info("Demo payment settlement applied for deal %s", deal_uuid)
+    return {"deal_id": deal_uuid, "event_type": "INVOICING.INVOICE.PAID", "payment_status": PaymentStatus.PAID.value, "simulated": True}
 
 
 # ============================================================

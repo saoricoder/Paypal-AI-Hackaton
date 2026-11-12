@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { useDeals } from "@/hooks/useDeals";
 import { DealInputPanel } from "@/components/DealInputPanel";
 import { DealTable } from "@/components/DealTable";
-import { AuditResponse, CreateDealPayload } from "@/types";
+import { AuditResponse, CreateDealPayload, DealCreateResponse } from "@/types";
 import { Sparkles } from "lucide-react";
 
 const AuditModal = dynamic(
@@ -24,7 +24,7 @@ export default function Home() {
 
   const selectedDeal = deals.find((d) => d.id === selectedDealId) || null;
 
-  const handleCreateDeal = async (payload: CreateDealPayload) => {
+  const handleCreateDeal = async (payload: CreateDealPayload): Promise<DealCreateResponse> => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const response = await fetch(`${API_URL}/api/deals/create`, {
       method: "POST",
@@ -32,8 +32,13 @@ export default function Home() {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error("Failed to create deal");
-    mutate();
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.detail || "Failed to create deal");
+    }
+    const created = await response.json() as DealCreateResponse;
+    await mutate();
+    return created;
   };
 
   const handleRunAudit = (dealId: string) => setSelectedDealId(dealId);
@@ -78,7 +83,7 @@ export default function Home() {
         </header>
 
         {/* Deal Input Card */}
-        <DealInputPanel onCreateDeal={handleCreateDeal} />
+        <DealInputPanel onCreateDeal={handleCreateDeal} onRefreshLedger={mutate} />
 
         {/* Deals Dashboard Grid */}
         <DealTable deals={deals} onRunAudit={handleRunAudit} onSendInvoice={handleSendInvoice} />
