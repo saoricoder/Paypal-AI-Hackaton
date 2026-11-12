@@ -1,6 +1,5 @@
 /**
- * Main page for Deal2Pay AI — Assembles all components.
- * Hero header + DealInputPanel + DealTable + AuditModal.
+ * Main page for Deal2Pay AI — Neon cyber aesthetic
  */
 
 "use client";
@@ -10,9 +9,9 @@ import dynamic from "next/dynamic";
 import { useDeals } from "@/hooks/useDeals";
 import { DealInputPanel } from "@/components/DealInputPanel";
 import { DealTable } from "@/components/DealTable";
-import { DealRecord, AuditResponse, CreateDealPayload } from "@/types";
+import { AuditResponse, CreateDealPayload } from "@/types";
+import { Sparkles } from "lucide-react";
 
-// react-pdf/pdfjs requires DOM APIs — load AuditModal client-side only
 const AuditModal = dynamic(
   () => import("@/components/AuditModal").then((m) => m.AuditModal),
   { ssr: false }
@@ -33,16 +32,11 @@ export default function Home() {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to create deal");
-    }
-
-    mutate(); // Refresh the deals list
+    if (!response.ok) throw new Error("Failed to create deal");
+    mutate();
   };
 
-  const handleRunAudit = (dealId: string) => {
-    setSelectedDealId(dealId);
-  };
+  const handleRunAudit = (dealId: string) => setSelectedDealId(dealId);
 
   const handleSendInvoice = async (invoiceId: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -51,53 +45,48 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deal_id: selectedDealId }),
     });
-
-    if (!response.ok) {
-      throw new Error("Failed to send invoice");
-    }
-
-    mutate(); // Refresh the deals list
+    if (!response.ok) throw new Error("Failed to send invoice");
+    mutate();
   };
 
   const handleAuditComplete = (result: AuditResponse) => {
     setAuditResult(result);
-    mutate(); // Refresh the deals list to show updated audit status
+    mutate();
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] font-sans text-slate-100">
-      {/* Hero Header */}
-      <header
-        className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0F172A]/70 px-8 py-4 backdrop-blur-md"
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div>
-              <h1 className="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400 bg-clip-text text-2xl font-black tracking-tight text-transparent">
+    <div className="min-h-screen text-cyan-50">
+      {/* Hero Header — Neon */}
+      <header className="sticky top-0 z-40 border-b border-cyan-500/20 bg-[#020617]/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(0,212,255,0.5)]">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="bg-gradient-to-r from-cyan-300 via-sky-200 to-blue-400 bg-clip-text text-2xl font-black tracking-tight text-transparent">
                 Deal2Pay AI
               </h1>
-              <p className="text-xs text-slate-400 font-medium">
-                Autonomous Deal-to-Invoice Agent &amp; Physical Delivery Audit
+              <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300/70">
+                Autonomous Deal-to-Invoice Agent
               </p>
+            </div>
           </div>
-          <div className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400">
-              PayPal AI Hackathon 2026
+          <div className="rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-1.5 text-xs font-semibold text-cyan-300 shadow-[0_0_15px_rgba(0,212,255,0.3)]">
+            PayPal AI Hackathon 2026
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* Main */}
+      <main className="mx-auto max-w-7xl px-6 py-10">
         <DealInputPanel onCreateDeal={handleCreateDeal} />
-
-        <DealTable
-          deals={deals}
-          onRunAudit={handleRunAudit}
-          onSendInvoice={handleSendInvoice}
-        />
-        {isLoading && <p className="mt-3 text-xs text-slate-500">Refreshing deals…</p>}
+        <DealTable deals={deals} onRunAudit={handleRunAudit} onSendInvoice={handleSendInvoice} />
+        {isLoading && (
+          <p className="mt-3 text-center text-xs text-cyan-400/70">Syncing live data…</p>
+        )}
       </main>
 
-      {/* Audit Modal */}
       {selectedDeal && (
         <AuditModal
           deal={selectedDeal}
